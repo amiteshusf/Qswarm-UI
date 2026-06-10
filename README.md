@@ -2,6 +2,8 @@
 
 Production-style control surface for **QSwarm** QA orchestration: repository wiring, branch policies, sessions, reviews, and PR actions—without Postman or raw backend access.
 
+**Repo:** https://github.com/amiteshusf/Qswarm-UI
+
 ## Stack
 
 - React 19, TypeScript, Vite 6  
