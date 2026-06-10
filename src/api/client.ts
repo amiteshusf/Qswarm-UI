@@ -1,0 +1,385 @@
+import { z } from 'zod'
+
+import {
+  branchPolicyInputSchema,
+  branchPolicySchema,
+  dashboardSchema,
+  repoConnectionInputSchema,
+  repoConnectionSchema,
+  revisionRequestSchema,
+  sessionCreateInputSchema,
+  sessionDetailSchema,
+  sessionSummarySchema,
+  settingsSchema,
+} from '@/api/schemas'
+import {
+  mockBranchPolicies,
+  mockDashboard,
+  mockRepoConnections,
+  mockSessionDetail,
+  mockSettings,
+} from '@/api/mocks/data'
+import { apiBaseUrl, useMockData } from '@/lib/env'
+
+export class ApiError extends Error {
+  status: number
+  body?: unknown
+
+  constructor(message: string, status: number, body?: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.body = body
+  }
+}
+
+function url(...segments: string[]) {
+  return `${apiBaseUrl}/api/v1/${segments.map(encodeURIComponent).join('/')}`
+}
+
+async function parseJson<T>(res: Response): Promise<T> {
+  const text = await res.text()
+  if (!text) return undefined as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    return text as unknown as T
+  }
+}
+
+async function fetchJson<T>(href: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(href, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  })
+  if (!res.ok) {
+    const body = await parseJson<unknown>(res).catch(() => undefined)
+    throw new ApiError(res.statusText || 'Request failed', res.status, body)
+  }
+  return parseJson<T>(res)
+}
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const mockSessionsStore = {
+  detail: { ...mockSessionDetail },
+  list: [...mockDashboard.recentSessions],
+}
+
+function zArray<T extends z.ZodTypeAny>(schema: T) {
+  return z.array(schema)
+}
+
+export const api = {
+  async getDashboard() {
+    if (useMockData) {
+      await delay(120)
+      return dashboardSchema.parse(mockDashboard)
+    }
+    const data = await fetchJson<unknown>(url('dashboard'))
+    return dashboardSchema.parse(data)
+  },
+
+  async listRepoConnections() {
+    if (useMockData) {
+      await delay(80)
+      return mockRepoConnections.map((r) => repoConnectionSchema.parse(r))
+    }
+    const data = await fetchJson<unknown>(url('repo-connections'))
+    return zArray(repoConnectionSchema).parse(data)
+  },
+
+  async getRepoConnection(id: string) {
+    if (useMockData) {
+      await delay(60)
+      const row = mockRepoConnections.find((r) => r.id === id)
+      if (!row) throw new ApiError('Not found', 404)
+      return repoConnectionSchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('repo-connections', id))
+    return repoConnectionSchema.parse(data)
+  },
+
+  async createRepoConnection(input: unknown) {
+    const body = repoConnectionInputSchema.parse(input)
+    if (useMockData) {
+      await delay(100)
+      const row = {
+        id: `rc_${crypto.randomUUID().slice(0, 8)}`,
+        ...body,
+        cloneUrl: body.cloneUrl || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      mockRepoConnections.unshift(repoConnectionSchema.parse(row))
+      return repoConnectionSchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('repo-connections'), {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+    return repoConnectionSchema.parse(data)
+  },
+
+  async updateRepoConnection(id: string, input: unknown) {
+    const body = repoConnectionInputSchema.parse(input)
+    if (useMockData) {
+      await delay(90)
+      const idx = mockRepoConnections.findIndex((r) => r.id === id)
+      if (idx === -1) throw new ApiError('Not found', 404)
+      const row = {
+        ...mockRepoConnections[idx],
+        ...body,
+        cloneUrl: body.cloneUrl || undefined,
+        updatedAt: new Date().toISOString(),
+      }
+      mockRepoConnections[idx] = repoConnectionSchema.parse(row)
+      return mockRepoConnections[idx]
+    }
+    const data = await fetchJson<unknown>(url('repo-connections', id), {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+    return repoConnectionSchema.parse(data)
+  },
+
+  async listBranchPolicies() {
+    if (useMockData) {
+      await delay(80)
+      return mockBranchPolicies.map((b) => branchPolicySchema.parse(b))
+    }
+    const data = await fetchJson<unknown>(url('branch-policies'))
+    return zArray(branchPolicySchema).parse(data)
+  },
+
+  async getBranchPolicy(id: string) {
+    if (useMockData) {
+      await delay(50)
+      const row = mockBranchPolicies.find((b) => b.id === id)
+      if (!row) throw new ApiError('Not found', 404)
+      return branchPolicySchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('branch-policies', id))
+    return branchPolicySchema.parse(data)
+  },
+
+  async createBranchPolicy(input: unknown) {
+    const body = branchPolicyInputSchema.parse(input)
+    if (useMockData) {
+      await delay(100)
+      const row = {
+        id: `bp_${crypto.randomUUID().slice(0, 8)}`,
+        ...body,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      mockBranchPolicies.unshift(branchPolicySchema.parse(row))
+      return branchPolicySchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('branch-policies'), {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+    return branchPolicySchema.parse(data)
+  },
+
+  async updateBranchPolicy(id: string, input: unknown) {
+    const body = branchPolicyInputSchema.parse(input)
+    if (useMockData) {
+      await delay(90)
+      const idx = mockBranchPolicies.findIndex((b) => b.id === id)
+      if (idx === -1) throw new ApiError('Not found', 404)
+      const row = {
+        ...mockBranchPolicies[idx],
+        ...body,
+        updatedAt: new Date().toISOString(),
+      }
+      mockBranchPolicies[idx] = branchPolicySchema.parse(row)
+      return mockBranchPolicies[idx]
+    }
+    const data = await fetchJson<unknown>(url('branch-policies', id), {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    })
+    return branchPolicySchema.parse(data)
+  },
+
+  async listSessions(filters?: { status?: string }) {
+    if (useMockData) {
+      await delay(100)
+      let rows = mockSessionsStore.list
+      if (filters?.status)
+        rows = rows.filter((s) => s.status === filters.status)
+      return rows.map((s) => sessionSummarySchema.parse(s))
+    }
+    const qs = filters?.status
+      ? `?status=${encodeURIComponent(filters.status)}`
+      : ''
+    const data = await fetchJson<unknown>(`${url('sessions')}${qs}`)
+    return zArray(sessionSummarySchema).parse(data)
+  },
+
+  async getSession(id: string) {
+    if (useMockData) {
+      await delay(120)
+      if (id === mockSessionsStore.detail.id)
+        return sessionDetailSchema.parse(mockSessionsStore.detail)
+      const base = mockSessionsStore.list.find((s) => s.id === id)
+      if (!base) throw new ApiError('Not found', 404)
+      return sessionDetailSchema.parse({
+        ...mockSessionDetail,
+        ...base,
+        rounds: mockSessionDetail.rounds,
+        patches: mockSessionDetail.patches,
+        executions: mockSessionDetail.executions,
+        reviews: mockSessionDetail.reviews,
+      })
+    }
+    const data = await fetchJson<unknown>(url('sessions', id))
+    return sessionDetailSchema.parse(data)
+  },
+
+  async createSession(input: unknown) {
+    const body = sessionCreateInputSchema.parse(input)
+    if (useMockData) {
+      await delay(150)
+      const id = `sess_${crypto.randomUUID().slice(0, 8)}`
+      const row = sessionDetailSchema.parse({
+        ...mockSessionDetail,
+        id,
+        status: 'draft',
+        ...body,
+        rounds: [],
+        patches: [],
+        executions: [],
+        reviews: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      mockSessionsStore.detail = row
+      mockSessionsStore.list = [
+        {
+          id: row.id,
+          status: row.status,
+          engine: row.engine,
+          repoConnectionId: row.repoConnectionId,
+          sourceRef: row.sourceRef,
+          sourceLabel: row.sourceLabel,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        },
+        ...mockSessionsStore.list,
+      ]
+      return row
+    }
+    const data = await fetchJson<unknown>(url('sessions'), {
+      method: 'POST',
+      body: JSON.stringify(body),
+    })
+    return sessionDetailSchema.parse(data)
+  },
+
+  async startSession(id: string) {
+    if (useMockData) {
+      await delay(100)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'running',
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'start'), {
+      method: 'POST',
+    })
+    return sessionDetailSchema.parse(data)
+  },
+
+  async requestRevision(id: string, input: unknown) {
+    const body = revisionRequestSchema.parse(input)
+    if (useMockData) {
+      await delay(120)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'revising',
+        reviews: [
+          {
+            id: `rev_${crypto.randomUUID().slice(0, 6)}`,
+            createdAt: new Date().toISOString(),
+            instruction: body.instruction,
+            scope: body.scope,
+            status: 'open',
+          },
+          ...mockSessionsStore.detail.reviews,
+        ],
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(
+      url('sessions', id, 'request-revision'),
+      { method: 'POST', body: JSON.stringify(body) },
+    )
+    return sessionDetailSchema.parse(data)
+  },
+
+  async approveSession(id: string) {
+    if (useMockData) {
+      await delay(100)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'succeeded',
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'approve'), {
+      method: 'POST',
+    })
+    return sessionDetailSchema.parse(data)
+  },
+
+  async createPr(id: string) {
+    if (useMockData) {
+      await delay(140)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'succeeded',
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'create-pr'), {
+      method: 'POST',
+    })
+    return sessionDetailSchema.parse(data)
+  },
+
+  async getSettings() {
+    if (useMockData) {
+      await delay(80)
+      return settingsSchema.parse(mockSettings)
+    }
+    const data = await fetchJson<unknown>(url('settings'))
+    return settingsSchema.parse(data)
+  },
+
+  async updateSettings(patch: unknown) {
+    if (useMockData) {
+      await delay(100)
+      return settingsSchema.parse({ ...mockSettings, ...(patch as object) })
+    }
+    const data = await fetchJson<unknown>(url('settings'), {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+    return settingsSchema.parse(data)
+  },
+}
