@@ -1,9 +1,10 @@
 import { formatDistanceToNow } from 'date-fns'
 import { Filter } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { formatErrorForToast } from '@/api/errors'
 import {
   useCreateSession,
   useRepoConnections,
@@ -40,6 +41,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 const filters = ['all', 'running', 'awaiting_review', 'draft'] as const
 
 export function SessionsPage() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState<(typeof filters)[number]>('all')
   const filter = useMemo(
     () => (tab === 'all' ? undefined : { status: tab }),
@@ -75,9 +77,9 @@ export function SessionsPage() {
         sourceRef: '',
         sourceLabel: '',
       })
-      window.location.href = `/sessions/${row.id}`
+      navigate(`/sessions/${row.id}`)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Create failed')
+      toast.error(formatErrorForToast(e))
     }
   }
 
@@ -200,7 +202,8 @@ export function SessionsPage() {
           </TabsList>
           <p className="text-muted-foreground flex items-center gap-2 text-xs">
             <Filter className="size-3.5" />
-            Filters apply instantly; counts reflect the mock store when enabled.
+            Filters apply instantly; counts reflect the current data source (mock
+            or API).
           </p>
         </div>
       </Tabs>

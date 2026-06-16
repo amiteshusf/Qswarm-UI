@@ -1,5 +1,25 @@
 import { z } from 'zod'
 
+/**
+ * HTTP client for QSwarm REST resources.
+ *
+ * Browser calls go to `${VITE_API_BASE_URL}${VITE_API_PATH_PREFIX ?? '/api/v1'}/...`.
+ * Cross-origin deployments require backend CORS for the UI origin — see docs/CORS.md.
+ */
+import {
+  ApiError,
+  ConfigurationError,
+  NetworkApiError,
+  SchemaResponseError,
+  extractBackendMessage,
+} from '@/api/errors'
+import {
+  mockBranchPolicies,
+  mockDashboard,
+  mockRepoConnections,
+  mockSessionDetail,
+  mockSettings,
+} from '@/api/mocks/data'
 import {
   branchPolicyInputSchema,
   branchPolicySchema,
@@ -12,29 +32,37 @@ import {
   sessionSummarySchema,
   settingsSchema,
 } from '@/api/schemas'
-import {
-  mockBranchPolicies,
-  mockDashboard,
-  mockRepoConnections,
-  mockSessionDetail,
-  mockSettings,
-} from '@/api/mocks/data'
-import { apiBaseUrl, useMockData } from '@/lib/env'
+import { apiBaseUrl, getApiConfigurationError, resolvedApiPathPrefix, useMockData } from '@/lib/env'
 
-export class ApiError extends Error {
-  status: number
-  body?: unknown
+export {
+  ApiError,
+  ConfigurationError,
+  NetworkApiError,
+  SchemaResponseError,
+} from '@/api/errors'
 
-  constructor(message: string, status: number, body?: unknown) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-    this.body = body
-  }
+const API_PREFIX = resolvedApiPathPrefix()
+
+function assertRealApiConfigured(): void {
+  const msg = getApiConfigurationError()
+  if (msg) throw new ConfigurationError(msg)
 }
 
-function url(...segments: string[]) {
-  return `${apiBaseUrl}/api/v1/${segments.map(encodeURIComponent).join('/')}`
+/** Full base for API paths: `origin` + configured prefix, without double slashes. */
+function apiRootHref(): string {
+  const origin = apiBaseUrl.replace(/\/+$/, '')
+  if (!origin) {
+    return API_PREFIX || ''
+  }
+  if (!API_PREFIX) return origin
+  return `${origin}${API_PREFIX}`
+}
+
+function url(...segments: string[]): string {
+  const root = apiRootHref()
+  const path = segments.map(encodeURIComponent).join('/')
+  if (root.endsWith('/')) return `${root}${path}`
+  return `${root}/${path}`
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -47,19 +75,54 @@ async function parseJson<T>(res: Response): Promise<T> {
   }
 }
 
+function httpFailureSummary(status: number, body: unknown, statusText: string) {
+  const fromBody = extractBackendMessage(body)
+  if (fromBody) return fromBody
+  if (status === 404)
+    return 'This endpoint or resource was not found. Confirm VITE_API_PATH_PREFIX and that the server exposes this route (see README → Backend alignment).'
+  if (status === 401 || status === 403)
+    return 'Access was denied. Authentication or permissions may be required.'
+  if (status >= 500)
+    return 'The API returned a server error. Try again shortly or check backend logs.'
+  return statusText || 'Request failed'
+}
+
 async function fetchJson<T>(href: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(href, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-  })
+  assertRealApiConfigured()
+  let res: Response
+  try {
+    res = await fetch(href, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+    })
+  } catch (e) {
+    const hint =
+      'Could not reach the API. Check VITE_API_BASE_URL, your network, and that the backend allows CORS from this site (browser DevTools → Network).'
+    throw new NetworkApiError(hint, { cause: e })
+  }
   if (!res.ok) {
     const body = await parseJson<unknown>(res).catch(() => undefined)
-    throw new ApiError(res.statusText || 'Request failed', res.status, body)
+    const summary = httpFailureSummary(res.status, body, res.statusText)
+    throw new ApiError(summary, res.status, body)
   }
   return parseJson<T>(res)
+}
+
+function parseWithSchema<T>(
+  schema: z.ZodType<T>,
+  data: unknown,
+  resourceLabel: string,
+): T {
+  const parsed = schema.safeParse(data)
+  if (parsed.success) return parsed.data
+  throw new SchemaResponseError(
+    'The server sent a response that does not match the UI contract (Zod validation failed). The backend may have changed; compare with src/api/schemas.ts.',
+    parsed.error,
+    resourceLabel,
+  )
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -80,7 +143,7 @@ export const api = {
       return dashboardSchema.parse(mockDashboard)
     }
     const data = await fetchJson<unknown>(url('dashboard'))
-    return dashboardSchema.parse(data)
+    return parseWithSchema(dashboardSchema, data, 'GET /dashboard')
   },
 
   async listRepoConnections() {
@@ -89,7 +152,7 @@ export const api = {
       return mockRepoConnections.map((r) => repoConnectionSchema.parse(r))
     }
     const data = await fetchJson<unknown>(url('repo-connections'))
-    return zArray(repoConnectionSchema).parse(data)
+    return parseWithSchema(zArray(repoConnectionSchema), data, 'GET /repo-connections')
   },
 
   async getRepoConnection(id: string) {
@@ -100,7 +163,7 @@ export const api = {
       return repoConnectionSchema.parse(row)
     }
     const data = await fetchJson<unknown>(url('repo-connections', id))
-    return repoConnectionSchema.parse(data)
+    return parseWithSchema(repoConnectionSchema, data, `GET /repo-connections/${id}`)
   },
 
   async createRepoConnection(input: unknown) {
@@ -121,7 +184,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     })
-    return repoConnectionSchema.parse(data)
+    return parseWithSchema(repoConnectionSchema, data, 'POST /repo-connections')
   },
 
   async updateRepoConnection(id: string, input: unknown) {
@@ -143,7 +206,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(body),
     })
-    return repoConnectionSchema.parse(data)
+    return parseWithSchema(
+      repoConnectionSchema,
+      data,
+      `PATCH /repo-connections/${id}`,
+    )
   },
 
   async listBranchPolicies() {
@@ -152,7 +219,11 @@ export const api = {
       return mockBranchPolicies.map((b) => branchPolicySchema.parse(b))
     }
     const data = await fetchJson<unknown>(url('branch-policies'))
-    return zArray(branchPolicySchema).parse(data)
+    return parseWithSchema(
+      zArray(branchPolicySchema),
+      data,
+      'GET /branch-policies',
+    )
   },
 
   async getBranchPolicy(id: string) {
@@ -163,7 +234,7 @@ export const api = {
       return branchPolicySchema.parse(row)
     }
     const data = await fetchJson<unknown>(url('branch-policies', id))
-    return branchPolicySchema.parse(data)
+    return parseWithSchema(branchPolicySchema, data, `GET /branch-policies/${id}`)
   },
 
   async createBranchPolicy(input: unknown) {
@@ -183,7 +254,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     })
-    return branchPolicySchema.parse(data)
+    return parseWithSchema(branchPolicySchema, data, 'POST /branch-policies')
   },
 
   async updateBranchPolicy(id: string, input: unknown) {
@@ -204,7 +275,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(body),
     })
-    return branchPolicySchema.parse(data)
+    return parseWithSchema(
+      branchPolicySchema,
+      data,
+      `PATCH /branch-policies/${id}`,
+    )
   },
 
   async listSessions(filters?: { status?: string }) {
@@ -219,7 +294,7 @@ export const api = {
       ? `?status=${encodeURIComponent(filters.status)}`
       : ''
     const data = await fetchJson<unknown>(`${url('sessions')}${qs}`)
-    return zArray(sessionSummarySchema).parse(data)
+    return parseWithSchema(zArray(sessionSummarySchema), data, 'GET /sessions')
   },
 
   async getSession(id: string) {
@@ -239,7 +314,7 @@ export const api = {
       })
     }
     const data = await fetchJson<unknown>(url('sessions', id))
-    return sessionDetailSchema.parse(data)
+    return parseWithSchema(sessionDetailSchema, data, `GET /sessions/${id}`)
   },
 
   async createSession(input: unknown) {
@@ -279,7 +354,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     })
-    return sessionDetailSchema.parse(data)
+    return parseWithSchema(sessionDetailSchema, data, 'POST /sessions')
   },
 
   async startSession(id: string) {
@@ -296,7 +371,11 @@ export const api = {
     const data = await fetchJson<unknown>(url('sessions', id, 'start'), {
       method: 'POST',
     })
-    return sessionDetailSchema.parse(data)
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/start`,
+    )
   },
 
   async requestRevision(id: string, input: unknown) {
@@ -325,7 +404,11 @@ export const api = {
       url('sessions', id, 'request-revision'),
       { method: 'POST', body: JSON.stringify(body) },
     )
-    return sessionDetailSchema.parse(data)
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/request-revision`,
+    )
   },
 
   async approveSession(id: string) {
@@ -342,7 +425,11 @@ export const api = {
     const data = await fetchJson<unknown>(url('sessions', id, 'approve'), {
       method: 'POST',
     })
-    return sessionDetailSchema.parse(data)
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/approve`,
+    )
   },
 
   async createPr(id: string) {
@@ -359,7 +446,11 @@ export const api = {
     const data = await fetchJson<unknown>(url('sessions', id, 'create-pr'), {
       method: 'POST',
     })
-    return sessionDetailSchema.parse(data)
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/create-pr`,
+    )
   },
 
   async getSettings() {
@@ -368,7 +459,7 @@ export const api = {
       return settingsSchema.parse(mockSettings)
     }
     const data = await fetchJson<unknown>(url('settings'))
-    return settingsSchema.parse(data)
+    return parseWithSchema(settingsSchema, data, 'GET /settings')
   },
 
   async updateSettings(patch: unknown) {
@@ -380,6 +471,6 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(patch),
     })
-    return settingsSchema.parse(data)
+    return parseWithSchema(settingsSchema, data, 'PATCH /settings')
   },
 }

@@ -13,7 +13,7 @@ export function SettingsPage() {
       <PageHeader
         eyebrow="Platform"
         title="Settings"
-        description="Engine defaults, infrastructure, and source-system wiring. Values are read from your QSwarm deployment; edits call PATCH /api/v1/settings when wired."
+        description="Engine defaults, infrastructure, and source-system wiring. Values are read from your QSwarm deployment via GET /api/v1/settings."
       />
       {q.isError ? (
         <QueryErrorAlert error={q.error} onRetry={() => void q.refetch()} />
@@ -126,8 +126,8 @@ export function SettingsPage() {
       ) : null}
       <Separator className="opacity-60" />
       <p className="text-muted-foreground text-center text-xs">
-        Settings mutations are stubbed client-side for mock mode; connect a real
-        backend to persist changes.
+        Editing settings in the UI is not wired yet; use your backend or admin
+        tools to change values. Mock mode applies changes in-memory only.
       </p>
     </div>
   )

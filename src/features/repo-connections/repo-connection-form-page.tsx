@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { formatErrorForToast } from '@/api/errors'
 import {
   useCreateRepoConnection,
   useRepoConnection,
@@ -68,7 +69,7 @@ export function RepoConnectionFormPage() {
         toast.success('Connection updated')
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed')
+      toast.error(formatErrorForToast(e))
     }
   })
 

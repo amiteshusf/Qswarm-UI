@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { formatErrorForToast } from '@/api/errors'
 import {
   useApproveSession,
   useCreatePr,
@@ -77,7 +78,7 @@ export function SessionDetailPage() {
       setInstruction('')
       setScope('')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Request failed')
+      toast.error(formatErrorForToast(e))
     }
   }
 
@@ -86,7 +87,7 @@ export function SessionDetailPage() {
       await approve.mutateAsync()
       toast.success('Session approved')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Approve failed')
+      toast.error(formatErrorForToast(e))
     }
   }
 
@@ -96,7 +97,7 @@ export function SessionDetailPage() {
       toast.success('Pull request creation queued')
       setPrOpen(false)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'PR creation failed')
+      toast.error(formatErrorForToast(e))
     }
   }
 
@@ -131,9 +132,7 @@ export function SessionDetailPage() {
                     void start
                       .mutateAsync()
                       .then(() => toast.success('Started'))
-                      .catch((e) =>
-                        toast.error(e instanceof Error ? e.message : 'Start failed'),
-                      )
+                      .catch((e) => toast.error(formatErrorForToast(e)))
                   }
                 >
                   <Play className="size-4" />
