@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -38,6 +39,11 @@ export function BranchPolicyFormPage() {
   const create = useCreateBranchPolicy()
   const update = useUpdateBranchPolicy(id ?? '')
 
+  const defaultRepoId = useMemo(
+    () => repos.data?.[0]?.id ?? '',
+    [repos.data],
+  )
+
   const form = useForm<BranchPolicyFormValues>({
     resolver: zodResolver(branchPolicyInputSchema),
     values: existing.data
@@ -47,7 +53,7 @@ export function BranchPolicyFormPage() {
           branchPattern: existing.data.branchPattern,
           prTitleTemplate: existing.data.prTitleTemplate,
           prBodyTemplate: existing.data.prBodyTemplate,
-          repoConnectionId: existing.data.repoConnectionId,
+          repoConnectionId: existing.data.repoConnectionId ?? defaultRepoId,
         }
       : {
           name: '',
@@ -56,7 +62,7 @@ export function BranchPolicyFormPage() {
           prTitleTemplate: '[QSwarm] {source} — session {session}',
           prBodyTemplate:
             'Automated QA session.\n\n**Source:** {source}\n**Engine:** {engine}\n',
-          repoConnectionId: undefined,
+          repoConnectionId: defaultRepoId,
         },
   })
 
@@ -109,23 +115,24 @@ export function BranchPolicyFormPage() {
               </FormField>
               <FormField
                 id="repoConnectionId"
-                label="Repository scope (optional)"
-                hint="Limit this policy to a single connection, or leave unset for org-wide defaults."
+                label="Repository connection"
+                hint="Live API requires a repository connection when creating a policy (POST uses repositoryConnectionId)."
+                error={form.formState.errors.repoConnectionId?.message}
               >
                 <Select
-                  value={form.watch('repoConnectionId') ?? '__none__'}
+                  value={form.watch('repoConnectionId') || undefined}
                   onValueChange={(v) =>
                     form.setValue(
                       'repoConnectionId',
-                      v === '__none__' || v == null ? undefined : v,
+                      typeof v === 'string' ? v : '',
+                      { shouldValidate: true },
                     )
                   }
                 >
                   <SelectTrigger id="repoConnectionId" className="w-full">
-                    <SelectValue placeholder="Any repository" />
+                    <SelectValue placeholder="Select a repository connection" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">Any repository</SelectItem>
                     {repos.data?.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
                         {r.displayName ?? `${r.ownerOrOrg}/${r.repoName}`}
@@ -175,7 +182,14 @@ export function BranchPolicyFormPage() {
                 <LinkButton variant="ghost" to="/branch-policies">
                   Cancel
                 </LinkButton>
-                <Button type="submit" disabled={create.isPending || update.isPending}>
+                <Button
+                  type="submit"
+                  disabled={
+                    create.isPending ||
+                    update.isPending ||
+                    (!!isNew && !repos.data?.length)
+                  }
+                >
                   {isNew ? 'Create' : 'Save changes'}
                 </Button>
               </div>

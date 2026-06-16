@@ -24,7 +24,8 @@ import {
   branchPolicyInputSchema,
   branchPolicySchema,
   dashboardSchema,
-  repoConnectionInputSchema,
+  repoConnectionFormSchema,
+  repoConnectionFormToWire,
   repoConnectionSchema,
   revisionRequestSchema,
   sessionCreateInputSchema,
@@ -32,6 +33,7 @@ import {
   sessionSummarySchema,
   settingsSchema,
 } from '@/api/schemas'
+import type { RepoConnection } from '@/api/schemas'
 import { apiBaseUrl, getApiConfigurationError, resolvedApiPathPrefix, uiActorId, useMockData } from '@/lib/env'
 
 export {
@@ -125,7 +127,11 @@ function parseWithSchema<T>(
   const parsed = schema.safeParse(data)
   if (parsed.success) return parsed.data
   throw new SchemaResponseError(
-    'The server sent a response that does not match the UI contract (Zod validation failed). The backend may have changed; compare with src/api/schemas.ts.',
+    [
+      `Zod validation failed for ${resourceLabel}.`,
+      'Compare the response with `src/api/schemas.ts` and `docs/LIVE_BACKEND_CONTRACT.md`.',
+      'Expand “Technical details” for paths, codes (invalid_type, invalid_enum_value, …), and expected vs received shapes.',
+    ].join(' '),
     parsed.error,
     resourceLabel,
   )
@@ -140,6 +146,30 @@ const mockSessionsStore = {
 
 function zArray<T extends z.ZodTypeAny>(schema: T) {
   return z.array(schema)
+}
+
+const repoConnectionsListSchema = z.union([
+  zArray(repoConnectionSchema),
+  z.object({ items: zArray(repoConnectionSchema) }),
+])
+
+function parseRepoConnectionsListResponse(
+  data: unknown,
+  resourceLabel: string,
+): RepoConnection[] {
+  const parsed = repoConnectionsListSchema.safeParse(data)
+  if (!parsed.success) {
+    throw new SchemaResponseError(
+      [
+        `Zod validation failed for ${resourceLabel}.`,
+        'Expected a top-level JSON array of repo connections, or `{ "items": [ ... ] }`.',
+        'See `docs/LIVE_BACKEND_CONTRACT.md`.',
+      ].join(' '),
+      parsed.error,
+      resourceLabel,
+    )
+  }
+  return Array.isArray(parsed.data) ? parsed.data : parsed.data.items
 }
 
 export const api = {
@@ -158,7 +188,7 @@ export const api = {
       return mockRepoConnections.map((r) => repoConnectionSchema.parse(r))
     }
     const data = await fetchJson<unknown>(url('repo-connections'))
-    return parseWithSchema(zArray(repoConnectionSchema), data, 'GET /repo-connections')
+    return parseRepoConnectionsListResponse(data, 'GET /repo-connections')
   },
 
   async getRepoConnection(id: string) {
@@ -173,13 +203,23 @@ export const api = {
   },
 
   async createRepoConnection(input: unknown) {
-    const body = repoConnectionInputSchema.parse(input)
+    const trimmed = repoConnectionFormSchema.parse(input)
+    const body = repoConnectionFormToWire(trimmed)
     if (useMockData) {
       await delay(100)
-      const row = {
+      const row: RepoConnection = {
         id: `rc_${crypto.randomUUID().slice(0, 8)}`,
-        ...body,
-        cloneUrl: body.cloneUrl || undefined,
+        provider: body.provider,
+        ownerOrOrg: body.owner,
+        repoName: body.repo,
+        projectOrWorkspace: null,
+        displayName: body.displayName ?? null,
+        cloneUrl: body.cloneUrl ?? null,
+        defaultBranch: body.defaultBranch,
+        authType: 'github_pat_env',
+        credentialReference: body.authRef,
+        isActive: true,
+        createdBy: 'mock',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -194,15 +234,21 @@ export const api = {
   },
 
   async updateRepoConnection(id: string, input: unknown) {
-    const body = repoConnectionInputSchema.parse(input)
+    const trimmed = repoConnectionFormSchema.parse(input)
+    const body = repoConnectionFormToWire(trimmed)
     if (useMockData) {
       await delay(90)
       const idx = mockRepoConnections.findIndex((r) => r.id === id)
       if (idx === -1) throw new ApiError('Not found', 404)
-      const row = {
+      const row: RepoConnection = {
         ...mockRepoConnections[idx],
-        ...body,
-        cloneUrl: body.cloneUrl || undefined,
+        provider: body.provider,
+        ownerOrOrg: body.owner,
+        repoName: body.repo,
+        defaultBranch: body.defaultBranch,
+        displayName: body.displayName ?? mockRepoConnections[idx].displayName,
+        cloneUrl: body.cloneUrl ?? mockRepoConnections[idx].cloneUrl,
+        credentialReference: body.authRef,
         updatedAt: new Date().toISOString(),
       }
       mockRepoConnections[idx] = repoConnectionSchema.parse(row)
@@ -245,6 +291,14 @@ export const api = {
 
   async createBranchPolicy(input: unknown) {
     const body = branchPolicyInputSchema.parse(input)
+    const wire = {
+      name: body.name,
+      baseBranch: body.baseBranch,
+      branchPattern: body.branchPattern,
+      prTitleTemplate: body.prTitleTemplate,
+      prBodyTemplate: body.prBodyTemplate,
+      repositoryConnectionId: body.repoConnectionId,
+    }
     if (useMockData) {
       await delay(100)
       const row = {
@@ -258,7 +312,7 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('branch-policies'), {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(wire),
     })
     return parseWithSchema(branchPolicySchema, data, 'POST /branch-policies')
   },

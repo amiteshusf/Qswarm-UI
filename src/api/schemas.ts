@@ -37,19 +37,23 @@ export const sessionStatusSchema = z
   .transform((v) => coerceSessionStatus(v))
 
 /**
- * Repository connection as returned by GET/PATCH/POST `/api/v1/repo-connections`
- * (backend-first field names).
+ * Repository connection as returned by GET/PATCH/POST `/api/v1/repo-connections`.
+ * Live backend (`qswarm.onrender.com`): list is `{ items: [...] }`; rows use camelCase;
+ * `credentialReference` may be null (e.g. SSH); writes use `owner`/`repo`/`authRef`.
  */
 export const repoConnectionSchema = z.object({
   id: z.string(),
-  /** Backend may use any provider identifier (e.g. github, GITHUB, enterprise). */
   provider: z.string(),
   ownerOrOrg: z.string(),
   repoName: z.string(),
+  projectOrWorkspace: z.string().nullable().optional(),
   displayName: z.string().nullable().optional(),
   cloneUrl: z.string().nullable().optional(),
   defaultBranch: z.string(),
-  credentialReference: z.string(),
+  authType: z.string().optional(),
+  credentialReference: z.string().nullable(),
+  isActive: z.boolean().optional(),
+  createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -152,6 +156,21 @@ export const reviewRequestSchema = z.object({
     .transform((v) => coerceReviewStatus(v)),
 })
 
+/** Session row in dashboard `recentSessions` (BFF / aggregate; superset of list fields). */
+export const sessionSummarySchema = z.object({
+  id: z.string(),
+  status: sessionStatusSchema,
+  engine: z.string(),
+  repoConnectionId: z.string(),
+  sourceRef: z.string(),
+  sourceLabel: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  approvedCaseId: z.string().optional(),
+  jobStatus: z.string().optional(),
+  currentRoundNumber: z.coerce.number().optional(),
+})
+
 export const sessionDetailSchema = z.object({
   id: z.string(),
   status: sessionStatusSchema,
@@ -172,17 +191,6 @@ export const sessionDetailSchema = z.object({
   patchSummary: z.string().optional(),
   prPreviewTitle: z.string().optional(),
   prPreviewBody: z.string().optional(),
-})
-
-export const sessionSummarySchema = sessionDetailSchema.pick({
-  id: true,
-  status: true,
-  engine: true,
-  repoConnectionId: true,
-  sourceRef: true,
-  sourceLabel: true,
-  createdAt: true,
-  updatedAt: true,
 })
 
 function normalizeSessionCountsRecord(
@@ -215,34 +223,27 @@ export const dashboardSchema = z
     sessionCounts: normalizeSessionCountsRecord(d.sessionCounts),
   }))
 
+/** GET `/api/v1/settings` — read-only deployment slice (live backend shape). */
 export const settingsSchema = z.object({
-  engine: z.object({
-    defaultEngine: z.string(),
-    maxRounds: z.number(),
-    temperature: z.number().optional(),
-    notes: z.string().optional(),
+  applicationName: z.string(),
+  environment: z.string(),
+  debug: z.boolean(),
+  jira: z.object({
+    useStub: z.boolean(),
+    configured: z.boolean(),
   }),
-  infrastructure: z.object({
-    provider: z.string(),
-    region: z.string().optional(),
-    runnerImage: z.string().optional(),
-    concurrency: z.number().optional(),
-  }),
-  source: z.object({
-    system: z.string(),
-    webhookUrl: z.string().optional(),
-    apiTokenRef: z.string().optional(),
-  }),
-  future: z
-    .object({
-      framework: z.string().optional(),
-      runtime: z.string().optional(),
-    })
-    .optional(),
+  codingProvider: z.string(),
+  workspaceRoot: z.string(),
+  claudeCodeEnabled: z.boolean(),
+  copilotAgentEnabled: z.boolean(),
+  notes: z.string().optional(),
 })
 
-/** POST/PATCH body for `/api/v1/repo-connections` (matches backend contract). */
-export const repoConnectionInputSchema = z
+/**
+ * Trimmed form values for repo connection create/edit (same keys as the UI).
+ * Wire JSON for POST/PATCH uses `owner` / `repo` / `authRef` — see `repoConnectionFormToWire`.
+ */
+export const repoConnectionFormSchema = z
   .object({
     provider: z.string().min(1),
     ownerOrOrg: z.string().min(1),
@@ -253,7 +254,6 @@ export const repoConnectionInputSchema = z
     credentialReference: z.string().min(1),
   })
   .transform((v) => ({
-    ...v,
     provider: v.provider.trim(),
     ownerOrOrg: v.ownerOrOrg.trim(),
     repoName: v.repoName.trim(),
@@ -263,6 +263,33 @@ export const repoConnectionInputSchema = z
     cloneUrl: v.cloneUrl === '' ? undefined : v.cloneUrl?.trim(),
   }))
 
+export type RepoConnectionFormValues = z.input<typeof repoConnectionFormSchema>
+
+/** POST/PATCH `/api/v1/repo-connections` JSON body (live backend). */
+export type RepoConnectionWireBody = {
+  provider: string
+  owner: string
+  repo: string
+  authRef: string
+  defaultBranch: string
+  displayName?: string
+  cloneUrl?: string
+}
+
+export function repoConnectionFormToWire(
+  v: z.infer<typeof repoConnectionFormSchema>,
+): RepoConnectionWireBody {
+  return {
+    provider: v.provider,
+    owner: v.ownerOrOrg,
+    repo: v.repoName,
+    authRef: v.credentialReference,
+    defaultBranch: v.defaultBranch,
+    displayName: v.displayName,
+    cloneUrl: v.cloneUrl,
+  }
+}
+
 export const branchPolicyInputSchema = z
   .object({
     name: z.string().min(1),
@@ -270,16 +297,15 @@ export const branchPolicyInputSchema = z
     branchPattern: z.string().min(1),
     prTitleTemplate: z.string().min(1),
     prBodyTemplate: z.string().min(1),
-    repoConnectionId: z.string().optional(),
+    repoConnectionId: z.string().min(1),
   })
   .transform((v) => ({
-    ...v,
     name: v.name.trim(),
     baseBranch: v.baseBranch.trim(),
     branchPattern: v.branchPattern.trim(),
     prTitleTemplate: v.prTitleTemplate.trim(),
     prBodyTemplate: v.prBodyTemplate.trim(),
-    repoConnectionId: v.repoConnectionId?.trim() || undefined,
+    repoConnectionId: v.repoConnectionId.trim(),
   }))
 
 export const sessionCreateInputSchema = z
@@ -315,11 +341,10 @@ export type SessionDetail = z.infer<typeof sessionDetailSchema>
 export type SessionSummary = z.infer<typeof sessionSummarySchema>
 export type Dashboard = z.infer<typeof dashboardSchema>
 export type Settings = z.infer<typeof settingsSchema>
-export type RepoConnectionInput = z.infer<typeof repoConnectionInputSchema>
+export type RepoConnectionInput = RepoConnectionWireBody
 export type BranchPolicyInput = z.infer<typeof branchPolicyInputSchema>
 export type SessionCreateInput = z.infer<typeof sessionCreateInputSchema>
 
-/** Local / RHF form state before Zod transform (matches resolver input shape). */
-export type RepoConnectionFormValues = z.input<typeof repoConnectionInputSchema>
+/** Local / RHF: branch & session forms (pre-transform where applicable). */
 export type BranchPolicyFormValues = z.input<typeof branchPolicyInputSchema>
 export type SessionCreateFormValues = z.input<typeof sessionCreateInputSchema>

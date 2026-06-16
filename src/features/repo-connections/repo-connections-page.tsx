@@ -51,9 +51,11 @@ export function RepoConnectionsPage() {
                 <p className="text-xs font-medium tracking-wide uppercase">
                   Auth reference
                 </p>
-                <p className="text-foreground font-mono text-xs">
-                  {r.credentialReference}
-                </p>
+                {r.credentialReference == null ? (
+                  <p className="text-muted-foreground text-xs italic">Not set</p>
+                ) : (
+                  <p className="text-foreground font-mono text-xs">{r.credentialReference}</p>
+                )}
               </div>
               {r.cloneUrl ? (
                 <div>

@@ -13,7 +13,7 @@ export function SettingsPage() {
       <PageHeader
         eyebrow="Platform"
         title="Settings"
-        description="Engine defaults, infrastructure, and source-system wiring. Values are read from your QSwarm deployment via GET /api/v1/settings."
+        description="Read-only slice from GET /api/v1/settings. Values reflect how this deployment is configured; secrets are never returned."
       />
       {q.isError ? (
         <QueryErrorAlert error={q.error} onRetry={() => void q.refetch()} />
@@ -28,97 +28,64 @@ export function SettingsPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-border/80 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Engine preferences</CardTitle>
+              <CardTitle className="text-lg">Application</CardTitle>
               <p className="text-muted-foreground text-sm">
-                Default model profile and guardrails for autonomous iterations.
+                Identity and runtime flags for this backend instance.
               </p>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row label="Default engine" value={q.data.engine.defaultEngine} />
-              <Row label="Max rounds" value={String(q.data.engine.maxRounds)} />
-              {q.data.engine.temperature != null ? (
-                <Row
-                  label="Temperature"
-                  value={String(q.data.engine.temperature)}
-                />
-              ) : null}
-              {q.data.engine.notes ? (
-                <p className="text-muted-foreground leading-relaxed">
-                  {q.data.engine.notes}
-                </p>
-              ) : null}
+              <Row label="Application" value={q.data.applicationName} />
+              <Row label="Environment" value={q.data.environment} />
+              <Row label="Debug mode" value={q.data.debug ? 'on' : 'off'} />
+              <Row label="Workspace root" value={q.data.workspaceRoot} />
             </CardContent>
           </Card>
           <Card className="border-border/80 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Infrastructure</CardTitle>
+              <CardTitle className="text-lg">Coding &amp; agents</CardTitle>
               <p className="text-muted-foreground text-sm">
-                Where sessions execute and how aggressively they fan out.
+                Which coding provider and agent integrations are enabled server-side.
               </p>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row label="Provider" value={q.data.infrastructure.provider} />
-              {q.data.infrastructure.region ? (
-                <Row label="Region" value={q.data.infrastructure.region} />
-              ) : null}
-              {q.data.infrastructure.runnerImage ? (
-                <Row label="Runner image" value={q.data.infrastructure.runnerImage} />
-              ) : null}
-              {q.data.infrastructure.concurrency != null ? (
-                <Row
-                  label="Concurrency"
-                  value={String(q.data.infrastructure.concurrency)}
-                />
-              ) : null}
+              <Row label="Coding provider" value={q.data.codingProvider} />
+              <Row
+                label="Claude Code"
+                value={q.data.claudeCodeEnabled ? 'enabled' : 'disabled'}
+              />
+              <Row
+                label="Copilot agent"
+                value={q.data.copilotAgentEnabled ? 'enabled' : 'disabled'}
+              />
             </CardContent>
           </Card>
           <Card className="border-border/80 shadow-sm lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-lg">Source system</CardTitle>
+              <CardTitle className="text-lg">Jira</CardTitle>
               <p className="text-muted-foreground text-sm">
-                Tickets, PRs, or chat systems that seed sessions.
+                Whether Jira is configured and whether the deployment uses a stub.
               </p>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-3 text-sm">
-                <Row label="System" value={q.data.source.system} />
-                {q.data.source.apiTokenRef ? (
-                  <Row label="API token ref" value={q.data.source.apiTokenRef} />
-                ) : null}
-              </div>
-              <div className="space-y-2 text-sm">
-                {q.data.source.webhookUrl ? (
-                  <>
-                    <p className="text-muted-foreground text-xs uppercase">
-                      Webhook URL
-                    </p>
-                    <p className="text-foreground font-mono text-xs break-all">
-                      {q.data.source.webhookUrl}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    No webhook URL configured.
-                  </p>
-                )}
-              </div>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Row
+                label="Stub mode"
+                value={q.data.jira.useStub ? 'yes' : 'no'}
+              />
+              <Row
+                label="Configured"
+                value={q.data.jira.configured ? 'yes' : 'no'}
+              />
             </CardContent>
           </Card>
-          {q.data.future ? (
-            <Card className="border-border/80 border-dashed bg-muted/10 shadow-none lg:col-span-2">
+          {q.data.notes ? (
+            <Card className="border-border/80 bg-muted/10 shadow-none lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">Future runtime</CardTitle>
-                <p className="text-muted-foreground text-sm">
-                  Reserved for framework and runtime hints as QSwarm evolves.
-                </p>
+                <CardTitle className="text-base">Notes</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground grid gap-3 text-sm sm:grid-cols-2">
-                {q.data.future.framework ? (
-                  <Row label="Framework" value={q.data.future.framework} />
-                ) : null}
-                {q.data.future.runtime ? (
-                  <Row label="Runtime" value={q.data.future.runtime} />
-                ) : null}
+              <CardContent>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {q.data.notes}
+                </p>
               </CardContent>
             </Card>
           ) : null}
@@ -126,8 +93,9 @@ export function SettingsPage() {
       ) : null}
       <Separator className="opacity-60" />
       <p className="text-muted-foreground text-center text-xs">
-        Editing settings in the UI is not wired yet; use your backend or admin
-        tools to change values. Mock mode applies changes in-memory only.
+        Editing settings in the UI is not wired yet; change configuration on the
+        backend. Mock mode uses an in-memory slice that matches this response
+        shape.
       </p>
     </div>
   )
@@ -137,7 +105,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
       <p className="text-muted-foreground text-xs uppercase">{label}</p>
-      <p className="text-foreground font-medium">{value}</p>
+      <p className="text-foreground font-medium break-all">{value}</p>
     </div>
   )
 }

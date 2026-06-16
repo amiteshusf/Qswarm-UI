@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import type { Resolver } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -9,7 +10,9 @@ import {
   useRepoConnection,
   useUpdateRepoConnection,
 } from '@/api/hooks'
-import { repoConnectionInputSchema } from '@/api/schemas'
+import {
+  repoConnectionFormSchema,
+} from '@/api/schemas'
 import type { RepoConnectionFormValues } from '@/api/schemas'
 import { FormField } from '@/components/patterns/form-field'
 import { PageHeader } from '@/components/patterns/page-header'
@@ -29,7 +32,9 @@ export function RepoConnectionFormPage() {
   const update = useUpdateRepoConnection(id ?? '')
 
   const form = useForm<RepoConnectionFormValues>({
-    resolver: zodResolver(repoConnectionInputSchema),
+    resolver: zodResolver(
+      repoConnectionFormSchema,
+    ) as Resolver<RepoConnectionFormValues>,
     values: existing.data
       ? {
           provider: existing.data.provider,
@@ -38,7 +43,7 @@ export function RepoConnectionFormPage() {
           displayName: existing.data.displayName ?? '',
           cloneUrl: existing.data.cloneUrl ?? '',
           defaultBranch: existing.data.defaultBranch,
-          credentialReference: existing.data.credentialReference,
+          credentialReference: existing.data.credentialReference ?? '',
         }
       : {
           provider: 'github',
@@ -156,7 +161,7 @@ export function RepoConnectionFormPage() {
               <FormField
                 id="credentialReference"
                 label="Auth reference"
-                hint="Pointer to stored credentials (e.g. vault path or secret ref your backend resolves)."
+                hint="Required for new connections. If the server has no stored ref yet (e.g. SSH), enter the secret ref your backend expects before saving."
                 error={form.formState.errors.credentialReference?.message}
               >
                 <Input

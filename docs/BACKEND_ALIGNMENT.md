@@ -10,7 +10,7 @@ With default env:
 - **Path prefix:** `VITE_API_PATH_PREFIX` defaults to **`/api/v1`**.
 - **Resources:** kebab-case segments such as `GET …/dashboard`, `GET …/repo-connections`, `GET …/sessions`, `POST …/sessions/:id/start`, etc. (full table in [README](../README.md)).
 
-Responses are validated with **Zod** against camelCase TypeScript-friendly shapes in `src/api/schemas.ts`.
+Responses are validated with **Zod** against shapes in `src/api/schemas.ts`. For the deployment behind **`https://qswarm.onrender.com`**, see **[LIVE_BACKEND_CONTRACT.md](./LIVE_BACKEND_CONTRACT.md)** for shapes discovered from live `GET`/`POST` probes.
 
 ## What `https://qswarm.onrender.com` exposes (OpenAPI)
 

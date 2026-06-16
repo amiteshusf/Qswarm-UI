@@ -179,7 +179,7 @@ export function DashboardPage() {
               >
                 <div className="space-y-1">
                   <p className="text-sm font-medium tracking-tight">
-                    {s.sourceLabel ?? s.sourceRef}
+                    {s.sourceLabel ?? s.approvedCaseId ?? s.sourceRef}
                   </p>
                   <p className="text-muted-foreground text-xs">
                     {repoName(s.repoConnectionId)} · {s.engine}
