@@ -24,7 +24,7 @@ From `https://qswarm.onrender.com/openapi.json`:
 | `GET/POST /sessions`, session detail shape | **Different model.** Sessions live under **`/automation/sessions`** with different request/response schemas (e.g. create requires `approved_case_id`, `created_by`). |
 | **List sessions** | **No** `GET /automation/sessions` collection list in OpenAPI (only `POST` create on that path). The UI’s sessions list cannot be populated from this spec alone. |
 | `GET/POST /branch-policies` | Branch policy is scoped under **`/repo-connections/{connection_id}/branch-policy`** (not a global list resource). |
-| `GET/POST /repo-connections` | **Exists**, but responses use **snake_case** and different field names (`owner_or_org`, `repo_name`, `credential_reference`, list wrapper `{ items: [...] }`, etc.). |
+| `GET/POST /repo-connections` | **Varies.** The UI expects `GET` to return a **top-level JSON array** of objects with camelCase fields (`id`, `provider`, `ownerOrOrg`, `repoName`, `defaultBranch`, `credentialReference`, `createdAt`, `updatedAt`, optional `displayName`, `cloneUrl`) and validates them in `schemas.ts`. Deployments that return a wrapper object, snake_case keys, or different field names need the client aligned to that contract. |
 
 So: **pointing the UI at Render with only `VITE_API_BASE_URL` is not sufficient** for the screens to function end-to-end. You will typically see **HTTP 404** on `…/api/v1/dashboard` and similar, or **Zod validation errors** if a proxy returns the wrong JSON shape.
 

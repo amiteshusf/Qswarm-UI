@@ -128,7 +128,7 @@ export function BranchPolicyFormPage() {
                     <SelectItem value="__none__">Any repository</SelectItem>
                     {repos.data?.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
-                        {r.displayName ?? `${r.owner}/${r.repo}`}
+                        {r.displayName ?? `${r.ownerOrOrg}/${r.repoName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>

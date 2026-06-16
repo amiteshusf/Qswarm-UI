@@ -35,10 +35,10 @@ export function RepoConnectionsPage() {
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
                 <CardTitle className="text-lg">
-                  {r.displayName ?? `${r.owner}/${r.repo}`}
+                  {r.displayName ?? `${r.ownerOrOrg}/${r.repoName}`}
                 </CardTitle>
                 <p className="text-muted-foreground text-sm">
-                  {r.provider.toUpperCase()} · {r.owner}/{r.repo} · default{' '}
+                  {r.provider} · {r.ownerOrOrg}/{r.repoName} · default{' '}
                   <span className="text-foreground font-medium">{r.defaultBranch}</span>
                 </p>
               </div>
@@ -51,7 +51,9 @@ export function RepoConnectionsPage() {
                 <p className="text-xs font-medium tracking-wide uppercase">
                   Auth reference
                 </p>
-                <p className="text-foreground font-mono text-xs">{r.authRef}</p>
+                <p className="text-foreground font-mono text-xs">
+                  {r.credentialReference}
+                </p>
               </div>
               {r.cloneUrl ? (
                 <div>

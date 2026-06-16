@@ -36,22 +36,20 @@ export const sessionStatusSchema = z
   .union([z.enum(SESSION_STATUS_VALUES), z.string()])
   .transform((v) => coerceSessionStatus(v))
 
-export const repoProviderSchema = z.enum([
-  'github',
-  'gitlab',
-  'bitbucket',
-  'other',
-])
-
+/**
+ * Repository connection as returned by GET/PATCH/POST `/api/v1/repo-connections`
+ * (backend-first field names).
+ */
 export const repoConnectionSchema = z.object({
   id: z.string(),
-  provider: repoProviderSchema,
-  owner: z.string(),
-  repo: z.string(),
-  displayName: z.string().optional(),
-  cloneUrl: z.string().optional(),
+  /** Backend may use any provider identifier (e.g. github, GITHUB, enterprise). */
+  provider: z.string(),
+  ownerOrOrg: z.string(),
+  repoName: z.string(),
+  displayName: z.string().nullable().optional(),
+  cloneUrl: z.string().nullable().optional(),
   defaultBranch: z.string(),
-  authRef: z.string(),
+  credentialReference: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -243,23 +241,25 @@ export const settingsSchema = z.object({
     .optional(),
 })
 
+/** POST/PATCH body for `/api/v1/repo-connections` (matches backend contract). */
 export const repoConnectionInputSchema = z
   .object({
-    provider: repoProviderSchema,
-    owner: z.string().min(1),
-    repo: z.string().min(1),
+    provider: z.string().min(1),
+    ownerOrOrg: z.string().min(1),
+    repoName: z.string().min(1),
     displayName: z.string().optional(),
     cloneUrl: z.union([z.string().url(), z.literal('')]).optional(),
     defaultBranch: z.string().min(1),
-    authRef: z.string().min(1),
+    credentialReference: z.string().min(1),
   })
   .transform((v) => ({
     ...v,
-    owner: v.owner.trim(),
-    repo: v.repo.trim(),
+    provider: v.provider.trim(),
+    ownerOrOrg: v.ownerOrOrg.trim(),
+    repoName: v.repoName.trim(),
     displayName: v.displayName?.trim() || undefined,
     defaultBranch: v.defaultBranch.trim(),
-    authRef: v.authRef.trim(),
+    credentialReference: v.credentialReference.trim(),
     cloneUrl: v.cloneUrl === '' ? undefined : v.cloneUrl?.trim(),
   }))
 

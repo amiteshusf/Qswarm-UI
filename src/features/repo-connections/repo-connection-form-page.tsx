@@ -18,13 +18,6 @@ import { LinkButton } from '@/components/ui/link-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function RepoConnectionFormPage() {
@@ -40,21 +33,21 @@ export function RepoConnectionFormPage() {
     values: existing.data
       ? {
           provider: existing.data.provider,
-          owner: existing.data.owner,
-          repo: existing.data.repo,
-          displayName: existing.data.displayName,
+          ownerOrOrg: existing.data.ownerOrOrg,
+          repoName: existing.data.repoName,
+          displayName: existing.data.displayName ?? '',
           cloneUrl: existing.data.cloneUrl ?? '',
           defaultBranch: existing.data.defaultBranch,
-          authRef: existing.data.authRef,
+          credentialReference: existing.data.credentialReference,
         }
       : {
           provider: 'github',
-          owner: '',
-          repo: '',
+          ownerOrOrg: '',
+          repoName: '',
           displayName: '',
           cloneUrl: '',
           defaultBranch: 'main',
-          authRef: '',
+          credentialReference: '',
         },
   })
 
@@ -100,42 +93,40 @@ export function RepoConnectionFormPage() {
               <FormField
                 id="provider"
                 label="Provider"
-                hint="Where the remote repository is hosted."
+                hint="Backend provider id (e.g. github, gitlab, or a custom value your API defines)."
                 error={form.formState.errors.provider?.message}
               >
-                <Select
-                  value={form.watch('provider')}
-                  onValueChange={(v) =>
-                    form.setValue('provider', v as RepoConnectionFormValues['provider'])
-                  }
-                >
-                  <SelectTrigger id="provider" className="w-full">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="github">GitHub</SelectItem>
-                    <SelectItem value="gitlab">GitLab</SelectItem>
-                    <SelectItem value="bitbucket">Bitbucket</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="provider"
+                  {...form.register('provider')}
+                  autoComplete="off"
+                  placeholder="github"
+                />
               </FormField>
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
-                  id="owner"
-                  label="Owner / organization"
-                  hint="Namespace that owns the repository."
-                  error={form.formState.errors.owner?.message}
+                  id="ownerOrOrg"
+                  label="Owner / org"
+                  hint="Organization or user that owns the repository."
+                  error={form.formState.errors.ownerOrOrg?.message}
                 >
-                  <Input id="owner" {...form.register('owner')} autoComplete="off" />
+                  <Input
+                    id="ownerOrOrg"
+                    {...form.register('ownerOrOrg')}
+                    autoComplete="off"
+                  />
                 </FormField>
                 <FormField
-                  id="repo"
+                  id="repoName"
                   label="Repository"
-                  hint="Short repository name (without org)."
-                  error={form.formState.errors.repo?.message}
+                  hint="Repository name without the owner prefix."
+                  error={form.formState.errors.repoName?.message}
                 >
-                  <Input id="repo" {...form.register('repo')} autoComplete="off" />
+                  <Input
+                    id="repoName"
+                    {...form.register('repoName')}
+                    autoComplete="off"
+                  />
                 </FormField>
               </div>
               <FormField
@@ -163,12 +154,15 @@ export function RepoConnectionFormPage() {
                 <Input id="defaultBranch" {...form.register('defaultBranch')} />
               </FormField>
               <FormField
-                id="authRef"
+                id="credentialReference"
                 label="Auth reference"
-                hint="Pointer to stored credentials, for example vault:github/org-bot."
-                error={form.formState.errors.authRef?.message}
+                hint="Pointer to stored credentials (e.g. vault path or secret ref your backend resolves)."
+                error={form.formState.errors.credentialReference?.message}
               >
-                <Input id="authRef" {...form.register('authRef')} />
+                <Input
+                  id="credentialReference"
+                  {...form.register('credentialReference')}
+                />
               </FormField>
               <div className="flex justify-end gap-2">
                 <LinkButton variant="ghost" to="/repo-connections">

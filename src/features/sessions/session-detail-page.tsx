@@ -87,7 +87,7 @@ export function SessionDetailPage() {
 
   const repoName =
     repos.data?.find((r) => r.id === q.data?.repoConnectionId)?.displayName ??
-    repos.data?.find((r) => r.id === q.data?.repoConnectionId)?.repo ??
+    repos.data?.find((r) => r.id === q.data?.repoConnectionId)?.repoName ??
     q.data?.repoConnectionId ??
     'Repository'
 

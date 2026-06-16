@@ -17,7 +17,7 @@ export function DashboardPage() {
 
   const repoName = (id: string) =>
     repos.data?.find((r) => r.id === id)?.displayName ??
-    repos.data?.find((r) => r.id === id)?.repo ??
+    repos.data?.find((r) => r.id === id)?.repoName ??
     id
 
   return (

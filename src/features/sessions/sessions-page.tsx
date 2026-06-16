@@ -64,7 +64,7 @@ export function SessionsPage() {
 
   const repoLabel = (id: string) =>
     repos.data?.find((r) => r.id === id)?.displayName ??
-    repos.data?.find((r) => r.id === id)?.repo ??
+    repos.data?.find((r) => r.id === id)?.repoName ??
     id
 
   async function onCreate() {
@@ -138,7 +138,7 @@ export function SessionsPage() {
                     <SelectContent>
                       {repos.data?.map((r) => (
                         <SelectItem key={r.id} value={r.id}>
-                          {r.displayName ?? `${r.owner}/${r.repo}`}
+                          {r.displayName ?? `${r.ownerOrOrg}/${r.repoName}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
