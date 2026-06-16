@@ -5,7 +5,9 @@ import {
   ChevronRight,
   CircleDot,
   FileDiff,
+  GitPullRequest,
   History,
+  Loader2,
   Play,
   ShieldCheck,
 } from 'lucide-react'
@@ -50,6 +52,24 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import type { SessionStatus } from '@/api/schemas'
+
+function sectionEmpty(message: string) {
+  return (
+    <p className="text-muted-foreground border-border/60 bg-muted/20 rounded-lg border border-dashed px-4 py-6 text-center text-sm">
+      {message}
+    </p>
+  )
+}
+
+function sessionActionHints(status: SessionStatus) {
+  const canStart = status === 'draft'
+  const canRevise =
+    status === 'awaiting_review' || status === 'revising' || status === 'running'
+  const canApprove = status === 'awaiting_review'
+  const canCreatePr = status === 'awaiting_review' || status === 'succeeded'
+  return { canStart, canRevise, canApprove, canCreatePr }
+}
 
 export function SessionDetailPage() {
   const { id = '' } = useParams()
@@ -68,7 +88,10 @@ export function SessionDetailPage() {
   const repoName =
     repos.data?.find((r) => r.id === q.data?.repoConnectionId)?.displayName ??
     repos.data?.find((r) => r.id === q.data?.repoConnectionId)?.repo ??
-    q.data?.repoConnectionId
+    q.data?.repoConnectionId ??
+    'Repository'
+
+  const hints = q.data ? sessionActionHints(q.data.status) : null
 
   async function submitRevision() {
     try {
@@ -119,39 +142,88 @@ export function SessionDetailPage() {
           <PageHeader
             eyebrow="Session"
             title={q.data.sourceLabel ?? q.data.sourceRef}
-            description={`${repoName} · ${q.data.engine} · started ${formatDistanceToNow(new Date(q.data.createdAt), { addSuffix: true })}`}
+            description={`${repoName} · ${q.data.engine} · updated ${formatDistanceToNow(new Date(q.data.updatedAt), { addSuffix: true })}`}
             actions={
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                 <LinkButton variant="ghost" to="/sessions">
                   Back
                 </LinkButton>
-                <Button
-                  variant="secondary"
-                  disabled={start.isPending || q.data.status === 'running'}
-                  onClick={() =>
-                    void start
-                      .mutateAsync()
-                      .then(() => toast.success('Started'))
-                      .catch((e) => toast.error(formatErrorForToast(e)))
-                  }
-                >
-                  <Play className="size-4" />
-                  Start
-                </Button>
-                <Button variant="outline" onClick={() => setRevOpen(true)}>
-                  Request revision
-                </Button>
-                <Button
-                  variant="default"
-                  disabled={approve.isPending}
-                  onClick={() => void submitApprove()}
-                >
-                  <ShieldCheck className="size-4" />
-                  Approve
-                </Button>
-                <Button variant="outline" onClick={() => setPrOpen(true)}>
-                  Create PR
-                </Button>
+                <div className="bg-muted/30 flex flex-wrap gap-2 rounded-xl border border-border/70 p-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={start.isPending || !hints?.canStart}
+                    title={
+                      hints?.canStart
+                        ? 'Materialize workspace and run the first automation round'
+                        : 'Start is only available while the session is in draft (not yet started).'
+                    }
+                    className="gap-1.5"
+                    onClick={() =>
+                      void start
+                        .mutateAsync()
+                        .then(() => toast.success('Session started'))
+                        .catch((e) => toast.error(formatErrorForToast(e)))
+                    }
+                  >
+                    {start.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Play className="size-4" />
+                    )}
+                    Start
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!hints?.canRevise || revision.isPending}
+                    title={
+                      hints?.canRevise
+                        ? 'Send structured feedback for another attempt'
+                        : 'Request revision when the session is running or waiting on review.'
+                    }
+                    className="gap-1.5"
+                    onClick={() => setRevOpen(true)}
+                  >
+                    Request revision
+                  </Button>
+                </div>
+                <div className="bg-muted/30 flex flex-wrap gap-2 rounded-xl border border-border/70 p-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={approve.isPending || !hints?.canApprove}
+                    title={
+                      hints?.canApprove
+                        ? 'Mark automation output as accepted for PR creation'
+                        : 'Approve is available when the session awaits review.'
+                    }
+                    className="gap-1.5"
+                    onClick={() => void submitApprove()}
+                  >
+                    {approve.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="size-4" />
+                    )}
+                    Approve
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={createPr.isPending || !hints?.canCreatePr}
+                    title={
+                      hints?.canCreatePr
+                        ? 'Open a pull request from the session branch'
+                        : 'Create PR after approval succeeds (or when the API reports a PR-ready state).'
+                    }
+                    className="gap-1.5"
+                    onClick={() => setPrOpen(true)}
+                  >
+                    <GitPullRequest className="size-4" />
+                    Create PR
+                  </Button>
+                </div>
               </div>
             }
           />
@@ -183,6 +255,11 @@ export function SessionDetailPage() {
                   </p>
                 </div>
                 <div className="space-y-2">
+                  {q.data.executions.length === 0
+                    ? sectionEmpty(
+                        'No execution attempts yet. Start the session to record runner output here.',
+                      )
+                    : null}
                   {q.data.executions.map((ex) => (
                     <div
                       key={ex.id}
@@ -224,6 +301,11 @@ export function SessionDetailPage() {
                 </div>
                 <Separator />
                 <div className="space-y-2">
+                  {q.data.patches.length === 0
+                    ? sectionEmpty(
+                        'No patch versions yet. They appear after the coding agent proposes changes.',
+                      )
+                    : null}
                   {q.data.patches.map((p) => (
                     <div
                       key={p.id}
@@ -253,6 +335,10 @@ export function SessionDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="relative space-y-0">
+              {q.data.rounds.length === 0 ? (
+                <div className="pl-2">{sectionEmpty('No rounds yet — the timeline fills in after work begins.')}</div>
+              ) : (
+                <>
               <div className="bg-border absolute top-2 bottom-2 left-[11px] w-px" />
               <div className="space-y-6">
                 {q.data.rounds.map((r, idx) => (
@@ -288,6 +374,8 @@ export function SessionDetailPage() {
                   </motion.div>
                 ))}
               </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -389,7 +477,11 @@ export function SessionDetailPage() {
             <Button
               disabled={!instruction.trim() || revision.isPending}
               onClick={() => void submitRevision()}
+              className="gap-1.5"
             >
+              {revision.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
               Send request
             </Button>
           </DialogFooter>
@@ -414,19 +506,27 @@ export function SessionDetailPage() {
             </div>
             <div>
               <p className="text-muted-foreground text-xs uppercase">Body</p>
-              <pre className="bg-muted/40 border-border/80 mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border p-3 text-xs">
+              <div className="bg-muted/40 border-border/80 text-foreground mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border p-3 text-sm leading-relaxed">
                 {q.data?.prPreviewBody ??
                   'Body templates come from branch policy + session metadata.'}
-              </pre>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPrOpen(false)}>
               Cancel
             </Button>
-            <Button disabled={createPr.isPending} onClick={() => void submitPr()}>
+            <Button
+              disabled={createPr.isPending}
+              className="gap-1.5"
+              onClick={() => void submitPr()}
+            >
+              {createPr.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
               Confirm & create PR
-              <ChevronRight className="size-4" />
             </Button>
           </DialogFooter>
         </DialogContent>

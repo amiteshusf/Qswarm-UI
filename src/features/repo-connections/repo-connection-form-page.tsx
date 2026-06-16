@@ -10,7 +10,7 @@ import {
   useUpdateRepoConnection,
 } from '@/api/hooks'
 import { repoConnectionInputSchema } from '@/api/schemas'
-import type { RepoConnectionInput } from '@/api/schemas'
+import type { RepoConnectionFormValues } from '@/api/schemas'
 import { FormField } from '@/components/patterns/form-field'
 import { PageHeader } from '@/components/patterns/page-header'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
@@ -35,7 +35,7 @@ export function RepoConnectionFormPage() {
   const create = useCreateRepoConnection()
   const update = useUpdateRepoConnection(id ?? '')
 
-  const form = useForm<RepoConnectionInput>({
+  const form = useForm<RepoConnectionFormValues>({
     resolver: zodResolver(repoConnectionInputSchema),
     values: existing.data
       ? {
@@ -106,7 +106,7 @@ export function RepoConnectionFormPage() {
                 <Select
                   value={form.watch('provider')}
                   onValueChange={(v) =>
-                    form.setValue('provider', v as RepoConnectionInput['provider'])
+                    form.setValue('provider', v as RepoConnectionFormValues['provider'])
                   }
                 >
                   <SelectTrigger id="provider" className="w-full">

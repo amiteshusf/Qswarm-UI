@@ -11,7 +11,7 @@ import {
   useUpdateBranchPolicy,
 } from '@/api/hooks'
 import { branchPolicyInputSchema } from '@/api/schemas'
-import type { BranchPolicyInput } from '@/api/schemas'
+import type { BranchPolicyFormValues } from '@/api/schemas'
 import { FormField } from '@/components/patterns/form-field'
 import { PageHeader } from '@/components/patterns/page-header'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
@@ -38,7 +38,7 @@ export function BranchPolicyFormPage() {
   const create = useCreateBranchPolicy()
   const update = useUpdateBranchPolicy(id ?? '')
 
-  const form = useForm<BranchPolicyInput>({
+  const form = useForm<BranchPolicyFormValues>({
     resolver: zodResolver(branchPolicyInputSchema),
     values: existing.data
       ? {

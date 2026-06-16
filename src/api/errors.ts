@@ -12,7 +12,21 @@ export function extractBackendMessage(body: unknown): string | undefined {
   if (typeof o.message === 'string' && o.message.trim()) return o.message
   if (typeof o.error === 'string' && o.error.trim()) return o.error
   if (typeof o.title === 'string' && o.title.trim()) return o.title
-  if (typeof o.detail === 'string' && o.detail.trim()) return o.detail
+
+  const detail = o.detail
+  if (typeof detail === 'string' && detail.trim()) return detail
+  if (detail && typeof detail === 'object') {
+    const d = detail as Record<string, unknown>
+    if (typeof d.message === 'string' && d.message.trim()) return d.message
+    if (typeof d.msg === 'string' && d.msg.trim()) return d.msg
+  }
+
+  const err = o.error
+  if (err && typeof err === 'object') {
+    const e = err as Record<string, unknown>
+    if (typeof e.message === 'string' && e.message.trim()) return e.message
+  }
+
   if (Array.isArray(o.detail)) {
     const parts = o.detail.map((item) => {
       if (typeof item === 'string') return item
@@ -26,6 +40,24 @@ export function extractBackendMessage(body: unknown): string | undefined {
     })
     const joined = parts.filter(Boolean).join('; ')
     return joined.length > 0 ? joined : undefined
+  }
+  return undefined
+}
+
+/** Best-effort error code from structured API bodies (e.g. FastAPI detail dict). */
+export function extractBackendErrorCode(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined
+  const o = body as Record<string, unknown>
+  if (typeof o.code === 'string' && o.code.trim()) return o.code.trim()
+  const detail = o.detail
+  if (detail && typeof detail === 'object' && 'code' in detail) {
+    const c = (detail as { code: unknown }).code
+    if (typeof c === 'string' && c.trim()) return c.trim()
+  }
+  const err = o.error
+  if (err && typeof err === 'object' && 'code' in err) {
+    const c = (err as { code: unknown }).code
+    if (typeof c === 'string' && c.trim()) return c.trim()
   }
   return undefined
 }
@@ -83,7 +115,11 @@ export function formatErrorForToast(error: unknown): string {
   if (error instanceof ConfigurationError) return error.message
   if (error instanceof NetworkApiError) return error.message
   if (error instanceof SchemaResponseError) return error.message
-  if (error instanceof ApiError) return error.summary
+  if (error instanceof ApiError) {
+    const code = extractBackendErrorCode(error.body)
+    if (code) return `${code}: ${error.summary}`
+    return error.summary
+  }
   if (error instanceof Error) return error.message
   return 'Something went wrong'
 }

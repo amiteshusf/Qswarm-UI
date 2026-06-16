@@ -6,11 +6,12 @@ import { toast } from 'sonner'
 
 import { formatErrorForToast } from '@/api/errors'
 import {
+  useBranchPolicies,
   useCreateSession,
   useRepoConnections,
   useSessions,
 } from '@/api/hooks'
-import type { SessionCreateInput } from '@/api/schemas'
+import type { SessionCreateFormValues } from '@/api/schemas'
 import { EmptyState } from '@/components/patterns/empty-state'
 import { FormField } from '@/components/patterns/form-field'
 import { PageHeader } from '@/components/patterns/page-header'
@@ -49,13 +50,14 @@ export function SessionsPage() {
   )
   const q = useSessions(filter)
   const repos = useRepoConnections()
+  const policies = useBranchPolicies()
   const create = useCreateSession()
 
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState<SessionCreateInput>({
+  const [form, setForm] = useState<SessionCreateFormValues>({
     repoConnectionId: '',
     branchPolicyId: undefined,
-    engine: 'qswarm-gpt-4.1',
+    engine: 'stub',
     sourceRef: '',
     sourceLabel: '',
   })
@@ -73,7 +75,7 @@ export function SessionsPage() {
       setForm({
         repoConnectionId: '',
         branchPolicyId: undefined,
-        engine: 'qswarm-gpt-4.1',
+        engine: 'stub',
         sourceRef: '',
         sourceLabel: '',
       })
@@ -98,15 +100,28 @@ export function SessionsPage() {
               <DialogHeader>
                 <DialogTitle>Create session</DialogTitle>
                 <DialogDescription>
-                  Point QSwarm at a repository connection and describe the source
-                  signal (ticket, PR, thread, etc.).
+                  Choose a saved repository connection, pick the coding engine the
+                  runner should use, and identify the work item (ticket key, case id,
+                  or PR) your backend expects as the source signal.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
+                {!repos.data?.length ? (
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    No repository connections yet.{' '}
+                    <Link
+                      to="/repo-connections/new"
+                      className="text-primary font-medium underline-offset-4 hover:underline"
+                    >
+                      Add a connection
+                    </Link>{' '}
+                    before creating a session.
+                  </p>
+                ) : null}
                 <FormField
                   id="repoConnectionId"
                   label="Repository connection"
-                  hint="Where QSwarm should clone from."
+                  hint="Saved clone target and credentials pointer from Repository connections."
                 >
                   <Select
                     value={form.repoConnectionId}
@@ -130,22 +145,68 @@ export function SessionsPage() {
                   </Select>
                 </FormField>
                 <FormField
-                  id="engine"
-                  label="Engine"
-                  hint="Model or runner profile configured in settings."
+                  id="branchPolicyId"
+                  label="Branch policy (optional)"
+                  hint="When set, must belong to the selected repository connection."
                 >
-                  <Input
-                    id="engine"
-                    value={form.engine}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, engine: e.target.value }))
+                  <Select
+                    value={form.branchPolicyId ?? '__none__'}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        branchPolicyId:
+                          !v || v === '__none__' ? undefined : v,
+                      }))
                     }
-                  />
+                  >
+                    <SelectTrigger id="branchPolicyId" className="w-full">
+                      <SelectValue placeholder="Default policy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {policies.data
+                        ?.filter(
+                          (p) =>
+                            !form.repoConnectionId ||
+                            p.repoConnectionId === form.repoConnectionId,
+                        )
+                        .map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+                <FormField
+                  id="engine"
+                  label="Coding engine"
+                  hint="Must match a runner your API accepts (e.g. stub for dry runs, claude_code, copilot_agent when enabled server-side)."
+                >
+                  <Select
+                    value={form.engine}
+                    onValueChange={(v) =>
+                      setForm((f) => ({
+                        ...f,
+                        engine: v && v.length > 0 ? v : 'stub',
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="engine" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="stub">stub (safe default)</SelectItem>
+                      <SelectItem value="claude_code">claude_code</SelectItem>
+                      <SelectItem value="copilot_agent">copilot_agent</SelectItem>
+                      <SelectItem value="qswarm-gpt-4.1">qswarm-gpt-4.1 (legacy label)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormField>
                 <FormField
                   id="sourceRef"
                   label="Source reference"
-                  hint="Opaque handle your backend understands (ticket id, PR URL, etc.)."
+                  hint="Primary handle for this run (e.g. Jira key, approved case id, or PR). Required by the API."
                 >
                   <Input
                     id="sourceRef"
@@ -158,7 +219,7 @@ export function SessionsPage() {
                 <FormField
                   id="sourceLabel"
                   label="Source label (optional)"
-                  hint="Human-readable label shown in lists."
+                  hint="Shown in session lists; does not replace the reference for the runner."
                 >
                   <Input
                     id="sourceLabel"
@@ -176,7 +237,10 @@ export function SessionsPage() {
                 <Button
                   onClick={() => void onCreate()}
                   disabled={
-                    create.isPending || !form.repoConnectionId || !form.sourceRef
+                    create.isPending ||
+                    !repos.data?.length ||
+                    !form.repoConnectionId ||
+                    !form.sourceRef.trim()
                   }
                 >
                   Create
@@ -222,8 +286,12 @@ export function SessionsPage() {
       {!q.isLoading && !q.data?.length ? (
         <EmptyState
           icon={Filter}
-          title="No sessions match"
-          description="Adjust filters or create a new session to get started."
+          title={tab === 'all' ? 'No sessions yet' : 'No sessions match'}
+          description={
+            tab === 'all'
+              ? 'Create a session to kick off a QA run, or connect a repository first if you have not.'
+              : 'Try another filter or create a session in this state from your workflow.'
+          }
         />
       ) : null}
 

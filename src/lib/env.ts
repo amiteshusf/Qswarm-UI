@@ -30,7 +30,12 @@ export const isProduction = import.meta.env.PROD
 export const allowSameOriginApi =
   import.meta.env.VITE_ALLOW_SAME_ORIGIN_API === 'true'
 
-export const appName = 'QSwarm'
+export const uiActorId =
+  (import.meta.env.VITE_UI_ACTOR_ID as string | undefined)?.trim() ?? ''
+
+/** Product label in shell, sidebar, and mock banner. */
+export const appName =
+  (import.meta.env.VITE_APP_NAME as string | undefined)?.trim() || 'QSwarm'
 
 /**
  * When non-null, the real API client must not run — show this instead of

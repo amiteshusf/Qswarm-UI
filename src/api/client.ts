@@ -32,7 +32,7 @@ import {
   sessionSummarySchema,
   settingsSchema,
 } from '@/api/schemas'
-import { apiBaseUrl, getApiConfigurationError, resolvedApiPathPrefix, useMockData } from '@/lib/env'
+import { apiBaseUrl, getApiConfigurationError, resolvedApiPathPrefix, uiActorId, useMockData } from '@/lib/env'
 
 export {
   ApiError,
@@ -63,6 +63,12 @@ function url(...segments: string[]): string {
   const path = segments.map(encodeURIComponent).join('/')
   if (root.endsWith('/')) return `${root}${path}`
   return `${root}/${path}`
+}
+
+function sessionMutationBody(extra?: Record<string, unknown>): string {
+  const base: Record<string, unknown> = {}
+  if (uiActorId) base.actorId = uiActorId
+  return JSON.stringify({ ...base, ...extra })
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -370,6 +376,7 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('sessions', id, 'start'), {
       method: 'POST',
+      body: sessionMutationBody(),
     })
     return parseWithSchema(
       sessionDetailSchema,
@@ -402,7 +409,13 @@ export const api = {
     }
     const data = await fetchJson<unknown>(
       url('sessions', id, 'request-revision'),
-      { method: 'POST', body: JSON.stringify(body) },
+      {
+        method: 'POST',
+        body: sessionMutationBody({
+          instruction: body.instruction,
+          ...(body.scope ? { scope: body.scope } : {}),
+        }),
+      },
     )
     return parseWithSchema(
       sessionDetailSchema,
@@ -424,6 +437,7 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('sessions', id, 'approve'), {
       method: 'POST',
+      body: sessionMutationBody(),
     })
     return parseWithSchema(
       sessionDetailSchema,
@@ -445,6 +459,7 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('sessions', id, 'create-pr'), {
       method: 'POST',
+      body: sessionMutationBody(),
     })
     return parseWithSchema(
       sessionDetailSchema,
