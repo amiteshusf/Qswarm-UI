@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_ALLOW_SAME_ORIGIN_API?: string
   /** Optional actor id merged into session mutation POST bodies when set. */
   readonly VITE_UI_ACTOR_ID?: string
+  /** POST /sessions `createdBy` (default qswarm-web). */
+  readonly VITE_SESSION_CREATED_BY?: string
   /** Override default product name "QSwarm" in nav and mock banner. */
   readonly VITE_APP_NAME?: string
 }

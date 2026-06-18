@@ -99,7 +99,7 @@ export function useCreateSession() {
   return useMutation({
     mutationFn: api.createSession,
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: qk.sessions() })
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
       void qc.invalidateQueries({ queryKey: qk.session(data.id) })
     },
@@ -109,10 +109,11 @@ export function useCreateSession() {
 export function useStartSession(id: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.startSession(id),
+    mutationFn: (opts?: { repositoryConnectionId?: string }) =>
+      api.startSession(id, opts),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
       void qc.invalidateQueries({ queryKey: qk.session(id) })
-      void qc.invalidateQueries({ queryKey: qk.sessions() })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
     },
   })
@@ -123,8 +124,8 @@ export function useRequestRevision(id: string) {
   return useMutation({
     mutationFn: (input: unknown) => api.requestRevision(id, input),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
       void qc.invalidateQueries({ queryKey: qk.session(id) })
-      void qc.invalidateQueries({ queryKey: qk.sessions() })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
     },
   })
@@ -135,8 +136,8 @@ export function useApproveSession(id: string) {
   return useMutation({
     mutationFn: () => api.approveSession(id),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
       void qc.invalidateQueries({ queryKey: qk.session(id) })
-      void qc.invalidateQueries({ queryKey: qk.sessions() })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
     },
   })
@@ -145,10 +146,11 @@ export function useApproveSession(id: string) {
 export function useCreatePr(id: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.createPr(id),
+    mutationFn: (repositoryConnectionId: string) =>
+      api.createPr(id, repositoryConnectionId),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
       void qc.invalidateQueries({ queryKey: qk.session(id) })
-      void qc.invalidateQueries({ queryKey: qk.sessions() })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
     },
   })

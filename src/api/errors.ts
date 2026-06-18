@@ -24,7 +24,25 @@ export function extractBackendMessage(body: unknown): string | undefined {
   const err = o.error
   if (err && typeof err === 'object') {
     const e = err as Record<string, unknown>
-    if (typeof e.message === 'string' && e.message.trim()) return e.message
+    if (typeof e.message === 'string' && e.message.trim()) return e.message.trim()
+    const details = e.details
+    if (Array.isArray(details) && details.length > 0) {
+      const parts = details.map((item) => {
+        if (!item || typeof item !== 'object') return String(item)
+        const row = item as Record<string, unknown>
+        if (typeof row.msg === 'string' && row.msg.trim()) {
+          const loc = Array.isArray(row.loc) ? row.loc.join('.') : ''
+          return loc ? `${loc}: ${row.msg}` : String(row.msg)
+        }
+        try {
+          return JSON.stringify(item)
+        } catch {
+          return String(item)
+        }
+      })
+      const joined = parts.filter(Boolean).join('; ')
+      if (joined.length > 0) return joined.slice(0, 1200)
+    }
   }
 
   if (Array.isArray(o.detail)) {

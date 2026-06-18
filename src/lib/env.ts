@@ -33,6 +33,19 @@ export const allowSameOriginApi =
 export const uiActorId =
   (import.meta.env.VITE_UI_ACTOR_ID as string | undefined)?.trim() ?? ''
 
+/**
+ * `createdBy` on POST /sessions (OpenAPI default `qswarm-web`).
+ * Override when your deployment expects a different audit actor label.
+ */
+export const sessionCreatedBy =
+  (import.meta.env.VITE_SESSION_CREATED_BY as string | undefined)?.trim() ||
+  'qswarm-web'
+
+/** Effective actor id for session POST mutations (approve, PR, revision, start). */
+export function sessionActorId(): string {
+  return uiActorId || 'qswarm-web'
+}
+
 /** Product label in shell, sidebar, and mock banner. */
 export const appName =
   (import.meta.env.VITE_APP_NAME as string | undefined)?.trim() || 'QSwarm'

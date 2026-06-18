@@ -45,6 +45,11 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 - **Shape:** top-level **array** of summaries: `id`, `status`, `engine`, `repoConnectionId`, `sourceRef`, `sourceLabel`, `createdAt`, `updatedAt`.
 
+## `POST /api/v1/sessions`
+
+- **Body (OpenAPI `UiAutomationSessionCreate`):** `repositoryConnectionId` (UUID, not `repoConnectionId`), `engine` (default `stub`), `sourceRef`, **`createdBy`** (default `qswarm-web`; override with `VITE_SESSION_CREATED_BY`), optional `branchPolicyId`, `sourceLabel`, `approvedCaseId`, etc.
+- **HTTP 201** on success.
+
 ## `GET /api/v1/sessions/{id}`
 
 - **Shape:** session detail with `rounds`, `patches`, `executions`, `reviews`, previews, etc. (matches the UI’s `sessionDetailSchema` direction).
@@ -53,7 +58,13 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 - **Shape:** flat read-only slice, e.g. `applicationName`, `environment`, `debug`, `jira: { useStub, configured }`, `codingProvider`, `workspaceRoot`, `claudeCodeEnabled`, `copilotAgentEnabled`, `notes` — **not** the older nested `engine` / `infrastructure` / `source` document.
 
-## Mutations not fully validated here
+## Session lifecycle POSTs (`/api/v1/sessions/{id}/…`)
 
-- `POST /sessions` returned **500** for synthetic probes (no structured validation body captured).
-- Session lifecycle POSTs were not re-probed in this pass; the UI keeps existing JSON bodies.
+- **start** — JSON `UiAutomationSessionStart`: optional `actorId`, optional `repositoryConnectionId` (UUID).
+- **request-revision** — JSON `UiAutomationSessionRevision`: required `instruction`; optional `scope`; `actorId` defaults to `qswarm-web`.
+- **approve** — JSON `UiAutomationSessionApprove`: `actorId` (default `qswarm-web`).
+- **create-pr** — JSON `UiAutomationSessionCreatePr`: **required** `actorId` and **`repositoryConnectionId`**; optional PR overrides.
+
+## Remaining caveats
+
+- **Create PR** may return **4xx** with `invalid_state` unless the backend internal state is PR-ready (e.g. after approval / `approved_for_pr` pipeline), even when the coerced UI status looks “ready”.

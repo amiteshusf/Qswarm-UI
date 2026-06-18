@@ -33,8 +33,15 @@ import {
   sessionSummarySchema,
   settingsSchema,
 } from '@/api/schemas'
-import type { RepoConnection } from '@/api/schemas'
-import { apiBaseUrl, getApiConfigurationError, resolvedApiPathPrefix, uiActorId, useMockData } from '@/lib/env'
+import type { RepoConnection, SessionCreateInput } from '@/api/schemas'
+import {
+  apiBaseUrl,
+  getApiConfigurationError,
+  resolvedApiPathPrefix,
+  sessionActorId,
+  sessionCreatedBy,
+  useMockData,
+} from '@/lib/env'
 
 export {
   ApiError,
@@ -67,10 +74,35 @@ function url(...segments: string[]): string {
   return `${root}/${path}`
 }
 
+/** OpenAPI session mutations expect `actorId` (default `qswarm-web` when unset). */
 function sessionMutationBody(extra?: Record<string, unknown>): string {
-  const base: Record<string, unknown> = {}
-  if (uiActorId) base.actorId = uiActorId
-  return JSON.stringify({ ...base, ...extra })
+  return JSON.stringify({ actorId: sessionActorId(), ...extra })
+}
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function firstUuid(s: string | undefined): string | undefined {
+  if (!s?.trim()) return undefined
+  const t = s.trim()
+  if (UUID_RE.test(t)) return t
+  return undefined
+}
+
+/** POST /api/v1/sessions wire body (OpenAPI `UiAutomationSessionCreate`). */
+function sessionCreateWireBody(parsed: SessionCreateInput): Record<string, unknown> {
+  const wire: Record<string, unknown> = {
+    repositoryConnectionId: parsed.repoConnectionId,
+    engine: parsed.engine,
+    sourceRef: parsed.sourceRef,
+    createdBy: sessionCreatedBy,
+  }
+  if (parsed.branchPolicyId) wire.branchPolicyId = parsed.branchPolicyId
+  if (parsed.sourceLabel) wire.sourceLabel = parsed.sourceLabel
+  const approved =
+    firstUuid(parsed.sourceLabel) ?? firstUuid(parsed.sourceRef)
+  if (approved) wire.approvedCaseId = approved
+  return wire
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -412,12 +444,15 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('sessions'), {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(sessionCreateWireBody(body)),
     })
     return parseWithSchema(sessionDetailSchema, data, 'POST /sessions')
   },
 
-  async startSession(id: string) {
+  async startSession(
+    id: string,
+    opts?: { repositoryConnectionId?: string },
+  ) {
     if (useMockData) {
       await delay(100)
       mockSessionsStore.detail = {
@@ -428,9 +463,12 @@ export const api = {
       }
       return sessionDetailSchema.parse(mockSessionsStore.detail)
     }
+    const extra: Record<string, unknown> = {}
+    if (opts?.repositoryConnectionId?.trim())
+      extra.repositoryConnectionId = opts.repositoryConnectionId.trim()
     const data = await fetchJson<unknown>(url('sessions', id, 'start'), {
       method: 'POST',
-      body: sessionMutationBody(),
+      body: sessionMutationBody(extra),
     })
     return parseWithSchema(
       sessionDetailSchema,
@@ -500,9 +538,10 @@ export const api = {
     )
   },
 
-  async createPr(id: string) {
+  async createPr(id: string, repositoryConnectionId: string) {
     if (useMockData) {
       await delay(140)
+      void repositoryConnectionId
       mockSessionsStore.detail = {
         ...mockSessionsStore.detail,
         id,
@@ -513,7 +552,9 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('sessions', id, 'create-pr'), {
       method: 'POST',
-      body: sessionMutationBody(),
+      body: sessionMutationBody({
+        repositoryConnectionId: repositoryConnectionId.trim(),
+      }),
     })
     return parseWithSchema(
       sessionDetailSchema,

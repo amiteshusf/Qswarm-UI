@@ -63,9 +63,11 @@ function sectionEmpty(message: string) {
 }
 
 function sessionActionHints(status: SessionStatus) {
-  const canStart = status === 'draft'
+  const canStart = status === 'draft' || status === 'queued'
   const canRevise =
-    status === 'awaiting_review' || status === 'revising' || status === 'running'
+    status === 'awaiting_review' ||
+    status === 'revising' ||
+    status === 'running'
   const canApprove = status === 'awaiting_review'
   const canCreatePr = status === 'awaiting_review' || status === 'succeeded'
   return { canStart, canRevise, canApprove, canCreatePr }
@@ -114,9 +116,15 @@ export function SessionDetailPage() {
     }
   }
 
+  const repoId = q.data?.repoConnectionId?.trim() ?? ''
+
   async function submitPr() {
+    if (!repoId) {
+      toast.error('This session has no repository connection id; cannot create a PR.')
+      return
+    }
     try {
-      await createPr.mutateAsync()
+      await createPr.mutateAsync(repoId)
       toast.success('Pull request creation queued')
       setPrOpen(false)
     } catch (e) {
@@ -142,7 +150,11 @@ export function SessionDetailPage() {
           <PageHeader
             eyebrow="Session"
             title={q.data.sourceLabel ?? q.data.sourceRef}
-            description={`${repoName} · ${q.data.engine} · updated ${formatDistanceToNow(new Date(q.data.updatedAt), { addSuffix: true })}`}
+            description={`${repoName} · ${q.data.engine} · ref ${q.data.sourceRef}${
+              q.data.sourceLabel && q.data.sourceLabel !== q.data.sourceRef
+                ? ` · label ${q.data.sourceLabel}`
+                : ''
+            } · updated ${formatDistanceToNow(new Date(q.data.updatedAt), { addSuffix: true })}`}
             actions={
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                 <LinkButton variant="ghost" to="/sessions">
@@ -156,12 +168,16 @@ export function SessionDetailPage() {
                     title={
                       hints?.canStart
                         ? 'Materialize workspace and run the first automation round'
-                        : 'Start is only available while the session is in draft (not yet started).'
+                        : 'Start is only available while the session is in draft or queued.'
                     }
                     className="gap-1.5"
                     onClick={() =>
                       void start
-                        .mutateAsync()
+                        .mutateAsync(
+                          repoId
+                            ? { repositoryConnectionId: repoId }
+                            : undefined,
+                        )
                         .then(() => toast.success('Session started'))
                         .catch((e) => toast.error(formatErrorForToast(e)))
                     }
@@ -211,11 +227,17 @@ export function SessionDetailPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={createPr.isPending || !hints?.canCreatePr}
+                    disabled={
+                      createPr.isPending ||
+                      !hints?.canCreatePr ||
+                      !repoId
+                    }
                     title={
-                      hints?.canCreatePr
-                        ? 'Open a pull request from the session branch'
-                        : 'Create PR after approval succeeds (or when the API reports a PR-ready state).'
+                      !repoId
+                        ? 'Cannot create a PR without a repository connection on this session.'
+                        : hints?.canCreatePr
+                          ? 'Open a pull request from the session branch (backend must be in a PR-ready state).'
+                          : 'Create PR when the session awaits review or has succeeded and is ready for PR.'
                     }
                     className="gap-1.5"
                     onClick={() => setPrOpen(true)}
@@ -517,7 +539,7 @@ export function SessionDetailPage() {
               Cancel
             </Button>
             <Button
-              disabled={createPr.isPending}
+              disabled={createPr.isPending || !repoId}
               className="gap-1.5"
               onClick={() => void submitPr()}
             >

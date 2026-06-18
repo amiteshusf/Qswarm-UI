@@ -219,7 +219,7 @@ export function SessionsPage() {
                 <FormField
                   id="sourceLabel"
                   label="Source label (optional)"
-                  hint="Shown in session lists; does not replace the reference for the runner."
+                  hint="If this is a UUID, the UI also sends it as approvedCaseId for hosted automation. Otherwise use any short list label."
                 >
                   <Input
                     id="sourceLabel"
