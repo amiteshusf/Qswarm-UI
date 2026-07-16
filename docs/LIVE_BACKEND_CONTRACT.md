@@ -60,11 +60,14 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 ## Session lifecycle POSTs (`/api/v1/sessions/{id}/…`)
 
-- **start** — JSON `UiAutomationSessionStart`: optional `actorId`, optional `repositoryConnectionId` (UUID).
-- **request-revision** — JSON `UiAutomationSessionRevision`: required `instruction`; optional `scope`; `actorId` defaults to `qswarm-web`.
-- **approve** — JSON `UiAutomationSessionApprove`: `actorId` (default `qswarm-web`).
-- **create-pr** — JSON `UiAutomationSessionCreatePr`: **required** `actorId` and **`repositoryConnectionId`**; optional PR overrides.
+All are **synchronous** on hosted Render (HTTP **200**, not 202). Start and revision can take **5–15+ minutes** (clone, npm, Copilot CLI, Playwright).
 
-## Remaining caveats
+- **start** — optional `{ actorId, repositoryConnectionId }`; returns full detail; UI status often becomes `awaiting_review` after first round.
+- **request-revision** — `{ actorId, instruction }` (aliases `instructionText`, `scope` / `targetScope`); **422** `revision_no_material_change` when Copilot made no scoped edits.
+- **approve** — `{ actorId }`; **409** `invalid_state` when not awaiting review.
+- **create-pr** — required `{ actorId, repositoryConnectionId }`; response may include `prExternalUrl`, `prExternalId`, `prStatus`.
 
-- **Create PR** may return **4xx** with `invalid_state` unless the backend internal state is PR-ready (e.g. after approval / `approved_for_pr` pipeline), even when the coerced UI status looks “ready”.
+### Session schemas
+
+- List/detail include **`workflowStatus`** (raw backend, e.g. `planning`, `pr_created`) alongside coerced UI **`status`**.
+- Detail may include **`prExternalUrl`**, **`prExternalId`**, **`prStatus`** after create-pr.

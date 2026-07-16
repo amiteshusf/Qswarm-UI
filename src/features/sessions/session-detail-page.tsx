@@ -52,7 +52,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
-import type { SessionStatus } from '@/api/schemas'
+import { sessionActionHints } from '@/features/sessions/session-actions'
 
 function sectionEmpty(message: string) {
   return (
@@ -60,17 +60,6 @@ function sectionEmpty(message: string) {
       {message}
     </p>
   )
-}
-
-function sessionActionHints(status: SessionStatus) {
-  const canStart = status === 'draft' || status === 'queued'
-  const canRevise =
-    status === 'awaiting_review' ||
-    status === 'revising' ||
-    status === 'running'
-  const canApprove = status === 'awaiting_review'
-  const canCreatePr = status === 'awaiting_review' || status === 'succeeded'
-  return { canStart, canRevise, canApprove, canCreatePr }
 }
 
 export function SessionDetailPage() {
@@ -93,7 +82,8 @@ export function SessionDetailPage() {
     q.data?.repoConnectionId ??
     'Repository'
 
-  const hints = q.data ? sessionActionHints(q.data.status) : null
+  const hints = q.data ? sessionActionHints(q.data) : null
+  const longRunning = start.isPending || revision.isPending
 
   async function submitRevision() {
     try {
@@ -124,8 +114,13 @@ export function SessionDetailPage() {
       return
     }
     try {
-      await createPr.mutateAsync(repoId)
-      toast.success('Pull request creation queued')
+      const updated = await createPr.mutateAsync(repoId)
+      toast.success(
+        updated.prExternalUrl ? 'Pull request created' : 'Pull request creation completed',
+        updated.prExternalUrl
+          ? { description: updated.prExternalUrl }
+          : undefined,
+      )
       setPrOpen(false)
     } catch (e) {
       toast.error(formatErrorForToast(e))
@@ -147,6 +142,27 @@ export function SessionDetailPage() {
 
       {q.data ? (
         <>
+          {longRunning ? (
+            <div
+              className="border-primary/30 bg-primary/5 text-foreground flex items-start gap-3 rounded-xl border px-4 py-3 text-sm"
+              role="status"
+            >
+              <Loader2 className="text-primary mt-0.5 size-4 shrink-0 animate-spin" />
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {start.isPending
+                    ? 'Starting session — this runs inline on the server'
+                    : 'Requesting revision — Copilot is regenerating changes'}
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Clone, npm bootstrap, Copilot CLI, and Playwright can take{' '}
+                  <strong>5–15+ minutes</strong> on hosted Render. Keep this tab
+                  open; the page updates when the API responds.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <PageHeader
             eyebrow="Session"
             title={q.data.sourceLabel ?? q.data.sourceRef}
@@ -187,7 +203,7 @@ export function SessionDetailPage() {
                     ) : (
                       <Play className="size-4" />
                     )}
-                    Start
+                    {start.isPending ? 'Starting…' : 'Start'}
                   </Button>
                   <Button
                     variant="outline"
@@ -252,6 +268,12 @@ export function SessionDetailPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <SessionStatusBadge status={q.data.status} />
+            {q.data.workflowStatus &&
+            q.data.workflowStatus !== q.data.status ? (
+              <span className="text-muted-foreground rounded-full border border-border/70 bg-muted/30 px-2.5 py-0.5 font-mono text-xs">
+                workflow: {q.data.workflowStatus}
+              </span>
+            ) : null}
             <Separator orientation="vertical" className="hidden h-6 sm:block" />
             <p className="text-muted-foreground text-sm">
               Source reference{' '}
@@ -260,6 +282,28 @@ export function SessionDetailPage() {
               </span>
             </p>
           </div>
+
+          {q.data.prExternalUrl ? (
+            <Card className="border-emerald-500/30 bg-emerald-500/5 shadow-sm">
+              <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Pull request</p>
+                  <p className="text-muted-foreground text-xs">
+                    {q.data.prStatus ?? 'created'}
+                    {q.data.prExternalId ? ` · #${q.data.prExternalId}` : ''}
+                  </p>
+                </div>
+                <a
+                  href={q.data.prExternalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  Open on GitHub
+                </a>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <div className="grid gap-6 lg:grid-cols-3">
             <Card className="border-border/80 lg:col-span-2 shadow-sm">
@@ -544,11 +588,16 @@ export function SessionDetailPage() {
               onClick={() => void submitPr()}
             >
               {createPr.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Creating PR…
+                </>
               ) : (
-                <ChevronRight className="size-4" />
+                <>
+                  <ChevronRight className="size-4" />
+                  Confirm & create PR
+                </>
               )}
-              Confirm & create PR
             </Button>
           </DialogFooter>
         </DialogContent>

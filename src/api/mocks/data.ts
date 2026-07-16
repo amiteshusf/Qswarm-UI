@@ -60,7 +60,8 @@ export const mockBranchPolicies: BranchPolicy[] = [
 export const mockSessionDetail: SessionDetail = {
   id: 'sess_demo',
   status: 'awaiting_review',
-  engine: 'qswarm-gpt-4.1',
+  workflowStatus: 'awaiting_review',
+  engine: 'copilot_agent',
   repoConnectionId: 'rc_demo',
   branchPolicyId: 'bp_main',
   sourceRef: 'ticket/OPS-4412',
@@ -185,6 +186,10 @@ export const mockDashboard: Dashboard = {
     cancelled: 0,
   },
   recentSessions: summaries,
+  repositoryConnectionCount: 2,
+  branchPolicyCount: 1,
+  environment: 'development',
+  applicationName: 'qswarm-web-mock',
 }
 
 export const mockSettings: Settings = {
@@ -195,6 +200,6 @@ export const mockSettings: Settings = {
   codingProvider: 'stub',
   workspaceRoot: '/tmp/qswarm',
   claudeCodeEnabled: false,
-  copilotAgentEnabled: false,
+  copilotAgentEnabled: true,
   notes: 'Mock settings mirror the read-only GET /api/v1/settings shape.',
 }

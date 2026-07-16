@@ -135,6 +135,14 @@ export function formatErrorForToast(error: unknown): string {
   if (error instanceof SchemaResponseError) return error.message
   if (error instanceof ApiError) {
     const code = extractBackendErrorCode(error.body)
+    if (code === 'revision_no_material_change') {
+      return 'Copilot did not change any files in the requested scope. Try broader instructions or a different scope.'
+    }
+    if (code === 'invalid_state') {
+      if (error.status === 409) {
+        return 'This action is not allowed in the current session state. Complete the prior step (e.g. approve before creating a PR).'
+      }
+    }
     if (code) return `${code}: ${error.summary}`
     return error.summary
   }

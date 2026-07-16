@@ -156,33 +156,29 @@ export const reviewRequestSchema = z.object({
     .transform((v) => coerceReviewStatus(v)),
 })
 
-/** Session row in dashboard `recentSessions` (BFF / aggregate; superset of list fields). */
+/** Session row in list, dashboard recentSessions, and detail header fields. */
 export const sessionSummarySchema = z.object({
   id: z.string(),
   status: sessionStatusSchema,
+  /** Raw backend session status (e.g. planning, generating, pr_created). */
+  workflowStatus: z.string().optional(),
   engine: z.string(),
   repoConnectionId: z.string(),
   sourceRef: z.string(),
   sourceLabel: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  branchPolicyId: z.string().optional(),
   approvedCaseId: z.string().optional(),
   jobStatus: z.string().optional(),
   currentRoundNumber: z.coerce.number().optional(),
 })
 
-export const sessionDetailSchema = z.object({
-  id: z.string(),
-  status: sessionStatusSchema,
-  engine: z.string(),
+export const sessionDetailSchema = sessionSummarySchema.extend({
   repoConnectionId: z
     .union([z.string(), z.null(), z.undefined()])
     .transform((v) => (v == null || v === '' ? '' : String(v))),
   branchPolicyId: z.string().nullish().transform((v) => v ?? undefined),
-  sourceRef: z.string(),
-  sourceLabel: z.string().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
   rounds: z.array(roundSchema).default([]),
   patches: z.array(patchVersionSchema).default([]),
   executions: z.array(executionAttemptSchema).default([]),
@@ -191,6 +187,9 @@ export const sessionDetailSchema = z.object({
   patchSummary: z.string().optional(),
   prPreviewTitle: z.string().optional(),
   prPreviewBody: z.string().optional(),
+  prExternalUrl: z.string().nullable().optional(),
+  prExternalId: z.string().nullable().optional(),
+  prStatus: z.string().nullable().optional(),
 })
 
 function normalizeSessionCountsRecord(
@@ -217,10 +216,18 @@ export const dashboardSchema = z
   .object({
     sessionCounts: z.record(z.string(), z.number()),
     recentSessions: z.array(sessionSummarySchema),
+    repositoryConnectionCount: z.coerce.number().optional(),
+    branchPolicyCount: z.coerce.number().optional(),
+    environment: z.string().optional(),
+    applicationName: z.string().optional(),
   })
   .transform((d) => ({
     recentSessions: d.recentSessions,
     sessionCounts: normalizeSessionCountsRecord(d.sessionCounts),
+    repositoryConnectionCount: d.repositoryConnectionCount,
+    branchPolicyCount: d.branchPolicyCount,
+    environment: d.environment,
+    applicationName: d.applicationName,
   }))
 
 /** GET `/api/v1/settings` — read-only deployment slice (live backend shape). */

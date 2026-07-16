@@ -94,6 +94,7 @@ function sessionCreateWireBody(parsed: SessionCreateInput): Record<string, unkno
   const wire: Record<string, unknown> = {
     repositoryConnectionId: parsed.repoConnectionId,
     engine: parsed.engine,
+    codingEngine: parsed.engine,
     sourceRef: parsed.sourceRef,
     createdBy: sessionCreatedBy,
   }
@@ -505,7 +506,8 @@ export const api = {
         method: 'POST',
         body: sessionMutationBody({
           instruction: body.instruction,
-          ...(body.scope ? { scope: body.scope } : {}),
+          instructionText: body.instruction,
+          ...(body.scope ? { scope: body.scope, targetScope: body.scope } : {}),
         }),
       },
     )

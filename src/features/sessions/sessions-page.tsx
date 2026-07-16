@@ -10,6 +10,7 @@ import {
   useCreateSession,
   useRepoConnections,
   useSessions,
+  useSettings,
 } from '@/api/hooks'
 import type { SessionCreateFormValues } from '@/api/schemas'
 import { EmptyState } from '@/components/patterns/empty-state'
@@ -51,7 +52,12 @@ export function SessionsPage() {
   const q = useSessions(filter)
   const repos = useRepoConnections()
   const policies = useBranchPolicies()
+  const settings = useSettings()
   const create = useCreateSession()
+
+  const defaultEngine = settings.data?.copilotAgentEnabled
+    ? 'copilot_agent'
+    : 'stub'
 
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<SessionCreateFormValues>({
@@ -75,7 +81,7 @@ export function SessionsPage() {
       setForm({
         repoConnectionId: '',
         branchPolicyId: undefined,
-        engine: 'stub',
+        engine: defaultEngine,
         sourceRef: '',
         sourceLabel: '',
       })
@@ -92,7 +98,12 @@ export function SessionsPage() {
         title="Sessions"
         description="Every QA run is a session—track engine, repository, source signal, and lifecycle status without leaving this surface."
         actions={
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={(next) => {
+          setOpen(next)
+          if (next && form.engine === 'stub' && defaultEngine !== 'stub') {
+            setForm((f) => ({ ...f, engine: defaultEngine }))
+          }
+        }}>
             <DialogTrigger className={buttonVariants()}>
               New session
             </DialogTrigger>
@@ -181,14 +192,18 @@ export function SessionsPage() {
                 <FormField
                   id="engine"
                   label="Coding engine"
-                  hint="Must match a runner your API accepts (e.g. stub for dry runs, claude_code, copilot_agent when enabled server-side)."
+                  hint={
+                    settings.data?.copilotAgentEnabled
+                      ? 'Hosted Sprint 2 POC uses copilot_agent. stub skips real Copilot generation.'
+                      : 'Copilot is disabled on this deployment — use stub or claude_code if enabled server-side.'
+                  }
                 >
                   <Select
                     value={form.engine}
                     onValueChange={(v) =>
                       setForm((f) => ({
                         ...f,
-                        engine: v && v.length > 0 ? v : 'stub',
+                        engine: v && v.length > 0 ? v : defaultEngine,
                       }))
                     }
                   >
@@ -196,10 +211,15 @@ export function SessionsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="stub">stub (safe default)</SelectItem>
-                      <SelectItem value="claude_code">claude_code</SelectItem>
-                      <SelectItem value="copilot_agent">copilot_agent</SelectItem>
-                      <SelectItem value="qswarm-gpt-4.1">qswarm-gpt-4.1 (legacy label)</SelectItem>
+                      <SelectItem value="stub">stub (dry run)</SelectItem>
+                      {settings.data?.copilotAgentEnabled ? (
+                        <SelectItem value="copilot_agent">
+                          copilot_agent (Sprint 2 hosted POC)
+                        </SelectItem>
+                      ) : null}
+                      {settings.data?.claudeCodeEnabled ? (
+                        <SelectItem value="claude_code">claude_code</SelectItem>
+                      ) : null}
                     </SelectContent>
                   </Select>
                 </FormField>
