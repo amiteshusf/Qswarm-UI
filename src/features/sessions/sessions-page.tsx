@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns'
-import { Filter } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Filter, Plus } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { formatErrorForToast } from '@/api/errors'
@@ -12,14 +12,13 @@ import {
   useSessions,
   useSettings,
 } from '@/api/hooks'
-import type { SessionCreateFormValues } from '@/api/schemas'
+import type { SessionCreateFormValues, SessionStatus } from '@/api/schemas'
 import { EmptyState } from '@/components/patterns/empty-state'
 import { FormField } from '@/components/patterns/form-field'
 import { PageHeader } from '@/components/patterns/page-header'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
 import { SessionStatusBadge } from '@/components/patterns/status-badges'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -39,12 +38,44 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { isActivePipeline, needsAttention } from '@/lib/workflow'
+import { cn } from '@/lib/utils'
 
-const filters = ['all', 'running', 'awaiting_review', 'draft'] as const
+const filters = [
+  'all',
+  'awaiting_review',
+  'running',
+  'revising',
+  'draft',
+  'failed',
+] as const
+
+type FilterTab = (typeof filters)[number]
+
+const filterLabels: Record<FilterTab, string> = {
+  all: 'All',
+  awaiting_review: 'Awaiting review',
+  running: 'Running',
+  revising: 'Revising',
+  draft: 'Draft',
+  failed: 'Failed',
+}
+
+function parseFilter(value: string | null): FilterTab {
+  if (value && filters.includes(value as FilterTab)) return value as FilterTab
+  return 'all'
+}
 
 export function SessionsPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<(typeof filters)[number]>('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = parseFilter(searchParams.get('status'))
+  const [tab, setTab] = useState<FilterTab>(initialTab)
+
+  useEffect(() => {
+    setTab(parseFilter(searchParams.get('status')))
+  }, [searchParams])
+
   const filter = useMemo(
     () => (tab === 'all' ? undefined : { status: tab }),
     [tab],
@@ -73,6 +104,15 @@ export function SessionsPage() {
     repos.data?.find((r) => r.id === id)?.repoName ??
     id
 
+  function onTabChange(next: FilterTab) {
+    setTab(next)
+    if (next === 'all') {
+      setSearchParams({})
+    } else {
+      setSearchParams({ status: next })
+    }
+  }
+
   async function onCreate() {
     try {
       const row = await create.mutateAsync(form)
@@ -91,29 +131,38 @@ export function SessionsPage() {
     }
   }
 
+  const isReviewQueue = tab === 'awaiting_review'
+
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Workflow"
-        title="Sessions"
-        description="Every QA run is a session—track engine, repository, source signal, and lifecycle status without leaving this surface."
+        eyebrow={isReviewQueue ? 'Review' : 'Workflow'}
+        title={isReviewQueue ? 'Review queue' : 'Sessions'}
+        description={
+          isReviewQueue
+            ? 'Approve or request revisions on sessions waiting for human review.'
+            : 'Every QA run is a session — track engine, repository, and lifecycle from draft through PR.'
+        }
         actions={
-          <Dialog open={open} onOpenChange={(next) => {
-          setOpen(next)
-          if (next && form.engine === 'stub' && defaultEngine !== 'stub') {
-            setForm((f) => ({ ...f, engine: defaultEngine }))
-          }
-        }}>
+          <Dialog
+            open={open}
+            onOpenChange={(next) => {
+              setOpen(next)
+              if (next && form.engine === 'stub' && defaultEngine !== 'stub') {
+                setForm((f) => ({ ...f, engine: defaultEngine }))
+              }
+            }}
+          >
             <DialogTrigger className={buttonVariants()}>
+              <Plus className="size-4" />
               New session
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Create session</DialogTitle>
                 <DialogDescription>
-                  Choose a saved repository connection, pick the coding engine the
-                  runner should use, and identify the work item (ticket key, case id,
-                  or PR) your backend expects as the source signal.
+                  Connect a repository, pick the coding engine, and identify the
+                  source signal your backend expects.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
@@ -122,7 +171,7 @@ export function SessionsPage() {
                     No repository connections yet.{' '}
                     <Link
                       to="/repo-connections/new"
-                      className="text-primary font-medium underline-offset-4 hover:underline"
+                      className="text-swarm font-medium underline-offset-4 hover:underline"
                     >
                       Add a connection
                     </Link>{' '}
@@ -132,7 +181,7 @@ export function SessionsPage() {
                 <FormField
                   id="repoConnectionId"
                   label="Repository connection"
-                  hint="Saved clone target and credentials pointer from Repository connections."
+                  hint="Clone target and credentials from Automation setup."
                 >
                   <Select
                     value={form.repoConnectionId}
@@ -158,7 +207,7 @@ export function SessionsPage() {
                 <FormField
                   id="branchPolicyId"
                   label="Branch policy (optional)"
-                  hint="When set, must belong to the selected repository connection."
+                  hint="Must belong to the selected repository."
                 >
                   <Select
                     value={form.branchPolicyId ?? '__none__'}
@@ -194,8 +243,8 @@ export function SessionsPage() {
                   label="Coding engine"
                   hint={
                     settings.data?.copilotAgentEnabled
-                      ? 'Hosted Sprint 2 POC uses copilot_agent. stub skips real Copilot generation.'
-                      : 'Copilot is disabled on this deployment — use stub or claude_code if enabled server-side.'
+                      ? 'Hosted POC uses copilot_agent.'
+                      : 'Copilot disabled — use stub or claude_code if enabled.'
                   }
                 >
                   <Select
@@ -214,7 +263,7 @@ export function SessionsPage() {
                       <SelectItem value="stub">stub (dry run)</SelectItem>
                       {settings.data?.copilotAgentEnabled ? (
                         <SelectItem value="copilot_agent">
-                          copilot_agent (Sprint 2 hosted POC)
+                          copilot_agent
                         </SelectItem>
                       ) : null}
                       {settings.data?.claudeCodeEnabled ? (
@@ -226,7 +275,7 @@ export function SessionsPage() {
                 <FormField
                   id="sourceRef"
                   label="Source reference"
-                  hint="Primary handle for this run (e.g. Jira key, approved case id, or PR). Required by the API."
+                  hint="Jira key, case id, or PR — required by the API."
                 >
                   <Input
                     id="sourceRef"
@@ -239,7 +288,7 @@ export function SessionsPage() {
                 <FormField
                   id="sourceLabel"
                   label="Source label (optional)"
-                  hint="If this is a UUID, the UI also sends it as approvedCaseId for hosted automation. Otherwise use any short list label."
+                  hint="UUIDs are sent as approvedCaseId for hosted automation."
                 >
                   <Input
                     id="sourceLabel"
@@ -271,23 +320,22 @@ export function SessionsPage() {
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+      <Tabs value={tab} onValueChange={(v) => onTabChange(v as FilterTab)}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList className="bg-muted/50 h-9 w-fit rounded-full p-1">
+          <TabsList className="bg-muted/40 h-auto flex-wrap justify-start gap-1 rounded-xl p-1">
             {filters.map((f) => (
               <TabsTrigger
                 key={f}
                 value={f}
-                className="rounded-full px-3 text-xs data-[state=active]:shadow-sm"
+                className="data-[state=active]:bg-swarm rounded-lg px-3 py-1.5 text-xs data-[state=active]:text-swarm-foreground data-[state=active]:shadow-sm"
               >
-                {f === 'all' ? 'All' : f.replace('_', ' ')}
+                {filterLabels[f]}
               </TabsTrigger>
             ))}
           </TabsList>
           <p className="text-muted-foreground flex items-center gap-2 text-xs">
             <Filter className="size-3.5" />
-            Filters apply instantly; counts reflect the current data source (mock
-            or API).
+            {q.data?.length ?? 0} session{(q.data?.length ?? 0) === 1 ? '' : 's'}
           </p>
         </div>
       </Tabs>
@@ -298,8 +346,8 @@ export function SessionsPage() {
 
       {q.isLoading ? (
         <div className="space-y-3">
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-xl" />
         </div>
       ) : null}
 
@@ -309,38 +357,81 @@ export function SessionsPage() {
           title={tab === 'all' ? 'No sessions yet' : 'No sessions match'}
           description={
             tab === 'all'
-              ? 'Create a session to kick off a QA run, or connect a repository first if you have not.'
-              : 'Try another filter or create a session in this state from your workflow.'
+              ? 'Create a session to kick off a QA run, or connect a repository first.'
+              : 'Try another filter or create a session in this state.'
           }
         />
       ) : null}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {q.data?.map((s) => (
-          <Link key={s.id} to={`/sessions/${s.id}`}>
-            <Card className="border-border/80 hover:border-primary/30 hover:bg-muted/20 transition-colors">
-              <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-base font-medium tracking-tight">
-                    {s.sourceLabel ?? s.sourceRef}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {repoLabel(s.repoConnectionId)} · {s.engine}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <SessionStatusBadge status={s.status} />
-                  <span className="text-muted-foreground text-xs">
-                    {formatDistanceToNow(new Date(s.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <SessionListRow
+            key={s.id}
+            id={s.id}
+            title={s.sourceLabel ?? s.sourceRef}
+            repo={repoLabel(s.repoConnectionId)}
+            engine={s.engine}
+            status={s.status}
+            updatedAt={s.updatedAt ?? s.createdAt}
+          />
         ))}
       </div>
     </div>
+  )
+}
+
+function SessionListRow({
+  id,
+  title,
+  repo,
+  engine,
+  status,
+  updatedAt,
+}: {
+  id: string
+  title: string
+  repo: string
+  engine: string
+  status: SessionStatus
+  updatedAt: string
+}) {
+  const attention = needsAttention(status)
+  const active = isActivePipeline(status)
+
+  return (
+    <Link to={`/sessions/${id}`} className="group block">
+      <div
+        className={cn(
+          'border-border/70 bg-surface-raised hover:border-swarm/35 flex gap-4 rounded-xl border p-4 transition-all hover:shadow-md',
+          attention && 'border-status-awaiting/30 ring-1 ring-status-awaiting/10',
+          active && !attention && 'border-status-running/25',
+        )}
+      >
+        <div
+          className={cn(
+            'mt-1 w-1 shrink-0 rounded-full',
+            attention && 'bg-status-awaiting',
+            active && !attention && 'bg-status-running',
+            !attention && !active && 'bg-border',
+          )}
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <p className="group-hover:text-swarm truncate text-base font-medium transition-colors">
+              {title}
+            </p>
+            <p className="text-muted-foreground truncate text-sm">
+              {repo} · <span className="font-mono text-xs">{engine}</span>
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <SessionStatusBadge status={status} />
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
   )
 }

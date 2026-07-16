@@ -62,6 +62,25 @@ export default {
           border: 'var(--sidebar-border)',
           ring: 'var(--sidebar-ring)',
         },
+        surface: {
+          DEFAULT: 'var(--surface)',
+          raised: 'var(--surface-raised)',
+        },
+        shell: {
+          DEFAULT: 'var(--shell)',
+          foreground: 'var(--shell-foreground)',
+        },
+        swarm: {
+          DEFAULT: 'var(--swarm)',
+          foreground: 'var(--swarm-foreground)',
+        },
+        status: {
+          running: 'var(--status-running)',
+          awaiting: 'var(--status-awaiting)',
+          revising: 'var(--status-revising)',
+          succeeded: 'var(--status-succeeded)',
+          failed: 'var(--status-failed)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],

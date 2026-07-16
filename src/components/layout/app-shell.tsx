@@ -1,10 +1,9 @@
 import { motion } from 'framer-motion'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { MobileNav } from '@/components/layout/nav-extras'
 import { TopBar } from '@/components/layout/top-bar'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   allowSameOriginApi,
   apiBaseUrl,
@@ -19,6 +18,9 @@ import { cn } from '@/lib/utils'
 export function AppShell() {
   const configError = getApiConfigurationError()
   const mockInProd = isProduction && useMockData
+  const { pathname } = useLocation()
+  const isSessionDetail =
+    pathname.startsWith('/sessions/') && pathname !== '/sessions'
 
   return (
     <div className="theme bg-background text-foreground flex min-h-svh w-full">
@@ -83,16 +85,19 @@ export function AppShell() {
             <code className="text-foreground">VITE_ALLOW_SAME_ORIGIN_API=true</code>).
           </div>
         ) : null}
-        <ScrollArea className="flex-1">
-          <motion.main
-            initial={{ opacity: 0, y: 6 }}
+        <main className="flex-1 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8"
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className={cn(
+              'mx-auto w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8',
+              isSessionDetail ? 'max-w-7xl' : 'max-w-6xl',
+            )}
           >
             <Outlet />
-          </motion.main>
-        </ScrollArea>
+          </motion.div>
+        </main>
       </div>
     </div>
   )

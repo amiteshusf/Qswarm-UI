@@ -4,82 +4,97 @@ import { cn } from '@/lib/utils'
 
 const styles: Record<
   SessionStatus,
-  { label: string; className: string }
+  { label: string; dot: string; className: string }
 > = {
   draft: {
     label: 'Draft',
-    className:
-      'border-transparent bg-muted text-muted-foreground',
+    dot: 'bg-muted-foreground/50',
+    className: 'border-border/60 bg-muted/50 text-muted-foreground',
   },
   queued: {
     label: 'Queued',
-    className: 'border-transparent bg-secondary text-secondary-foreground',
+    dot: 'bg-muted-foreground',
+    className: 'border-border/60 bg-secondary/80 text-secondary-foreground',
   },
   running: {
     label: 'Running',
+    dot: 'bg-status-running animate-pulse',
     className:
-      'border-transparent bg-primary/15 text-primary',
+      'border-status-running/25 bg-status-running/10 text-[color:var(--status-running)]',
   },
   awaiting_review: {
     label: 'Awaiting review',
+    dot: 'bg-status-awaiting',
     className:
-      'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400',
+      'border-status-awaiting/30 bg-status-awaiting/12 text-[color:var(--status-awaiting)] font-medium',
   },
   revising: {
     label: 'Revising',
+    dot: 'bg-status-revising animate-pulse',
     className:
-      'border-transparent bg-violet-500/15 text-violet-700 dark:text-violet-300',
+      'border-status-revising/25 bg-status-revising/10 text-[color:var(--status-revising)]',
   },
   succeeded: {
     label: 'Succeeded',
+    dot: 'bg-status-succeeded',
     className:
-      'border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+      'border-status-succeeded/25 bg-status-succeeded/10 text-[color:var(--status-succeeded)]',
   },
   failed: {
     label: 'Failed',
+    dot: 'bg-status-failed',
     className:
-      'border-transparent bg-destructive/15 text-destructive',
+      'border-status-failed/25 bg-destructive/10 text-destructive',
   },
   cancelled: {
     label: 'Cancelled',
-    className: 'border-transparent bg-muted text-muted-foreground line-through',
+    dot: 'bg-muted-foreground/40',
+    className: 'border-border/60 bg-muted/40 text-muted-foreground line-through',
   },
 }
 
 export function SessionStatusBadge({
   status,
   className,
+  showDot = true,
 }: {
   status: SessionStatus
   className?: string
+  showDot?: boolean
 }) {
   const s = styles[status]
   return (
     <Badge
       variant="outline"
-      className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', s.className, className)}
+      className={cn(
+        'gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium',
+        s.className,
+        className,
+      )}
     >
+      {showDot ? (
+        <span className={cn('size-1.5 shrink-0 rounded-full', s.dot)} />
+      ) : null}
       {s.label}
     </Badge>
   )
 }
 
-const execStyles: Record<
-  string,
-  { label: string; className: string }
-> = {
+const execStyles: Record<string, { label: string; className: string }> = {
   pending: { label: 'Pending', className: 'bg-muted text-muted-foreground' },
-  running: { label: 'Running', className: 'bg-primary/15 text-primary' },
-  passed: { label: 'Passed', className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' },
-  failed: { label: 'Failed', className: 'bg-destructive/15 text-destructive' },
+  running: {
+    label: 'Running',
+    className: 'bg-status-running/12 text-[color:var(--status-running)]',
+  },
+  passed: {
+    label: 'Passed',
+    className: 'bg-status-succeeded/12 text-[color:var(--status-succeeded)]',
+  },
+  failed: { label: 'Failed', className: 'bg-destructive/12 text-destructive' },
   skipped: { label: 'Skipped', className: 'bg-muted text-muted-foreground' },
 }
 
-export function ExecutionStatusBadge({
-  status,
-}: {
-  status: string
-}) {
+export function ExecutionStatusBadge({ status }: { status: string }) {
   const s = execStyles[status] ?? execStyles.pending
   return (
     <Badge
