@@ -95,6 +95,19 @@ export const executionAttemptSchema = z.object({
   exitCode: z.number().nullable().optional(),
 })
 
+export const patchFileChangeSchema = z.object({
+  path: z.string(),
+  changeType: z
+    .enum(['modified', 'created', 'deleted', 'renamed'])
+    .optional(),
+  summary: z.string().optional(),
+  beforeContent: z.string().optional(),
+  afterContent: z.string().optional(),
+  unifiedDiff: z.string().optional(),
+  additions: z.coerce.number().optional(),
+  deletions: z.coerce.number().optional(),
+})
+
 export const patchVersionSchema = z.object({
   id: z.string(),
   version: z.coerce.number(),
@@ -103,6 +116,8 @@ export const patchVersionSchema = z.object({
   filesChanged: z.coerce.number().optional(),
   additions: z.coerce.number().optional(),
   deletions: z.coerce.number().optional(),
+  /** Per-file diffs when backend provides them (optional). */
+  files: z.array(patchFileChangeSchema).optional(),
 })
 
 const ROUND_STATUSES = ['planned', 'active', 'complete', 'failed'] as const
@@ -343,6 +358,8 @@ export const revisionRequestSchema = z
 
 export type SessionStatus = z.infer<typeof sessionStatusSchema>
 export type RepoConnection = z.infer<typeof repoConnectionSchema>
+export type PatchFileChange = z.infer<typeof patchFileChangeSchema>
+export type PatchVersion = z.infer<typeof patchVersionSchema>
 export type BranchPolicy = z.infer<typeof branchPolicySchema>
 export type SessionDetail = z.infer<typeof sessionDetailSchema>
 export type SessionSummary = z.infer<typeof sessionSummarySchema>
