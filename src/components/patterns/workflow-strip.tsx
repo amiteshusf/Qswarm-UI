@@ -1,18 +1,27 @@
 import type { SessionStatus } from '@/api/schemas'
-import { WORKFLOW_STEPS, workflowStepIndex } from '@/lib/workflow'
+import {
+  FRIENDLY_WORKFLOW_STEPS,
+  friendlyWorkflowStepIndex,
+} from '@/features/sessions/session-lifecycle'
 import { cn } from '@/lib/utils'
 import { Check } from 'lucide-react'
 
 export function WorkflowStrip({
   status,
   workflowStatus,
+  prExternalUrl,
   className,
 }: {
   status: SessionStatus
   workflowStatus?: string
+  prExternalUrl?: string | null
   className?: string
 }) {
-  const current = workflowStepIndex(status, workflowStatus)
+  const current = friendlyWorkflowStepIndex(
+    status,
+    workflowStatus,
+    prExternalUrl,
+  )
   const terminal = status === 'failed' || status === 'cancelled'
 
   return (
@@ -22,9 +31,9 @@ export function WorkflowStrip({
         className,
       )}
       role="list"
-      aria-label="Session workflow progress"
+      aria-label="Automation progress"
     >
-      {WORKFLOW_STEPS.map((step, idx) => {
+      {FRIENDLY_WORKFLOW_STEPS.map((step, idx) => {
         const done = idx < current
         const active = idx === current && !terminal
         const failed = terminal && idx === current
@@ -53,7 +62,7 @@ export function WorkflowStrip({
               </span>
               {step.label}
             </div>
-            {idx < WORKFLOW_STEPS.length - 1 ? (
+            {idx < FRIENDLY_WORKFLOW_STEPS.length - 1 ? (
               <div
                 className={cn(
                   'mx-0.5 hidden h-px w-4 sm:block',

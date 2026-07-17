@@ -3,14 +3,10 @@ import { motion } from 'framer-motion'
 import {
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   CircleDot,
   FileDiff,
-  GitPullRequest,
   History,
   Loader2,
-  Play,
-  ShieldCheck,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
@@ -26,7 +22,6 @@ import {
   useStartSession,
 } from '@/api/hooks'
 import { FormField } from '@/components/patterns/form-field'
-import { PageHeader } from '@/components/patterns/page-header'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
 import {
   ExecutionStatusBadge,
@@ -44,20 +39,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { sessionActionHints } from '@/features/sessions/session-actions'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import { SessionNextAction } from '@/features/sessions/session-next-action'
+import {
+  friendlyPatchLabel,
+  friendlyRoundTitle,
+  friendlyValidationLabel,
+  getHeroSummary,
+} from '@/features/sessions/session-lifecycle'
 import { cn } from '@/lib/utils'
-
-function sectionEmpty(message: string) {
-  return (
-    <p className="text-muted-foreground border-border/50 bg-muted/15 rounded-lg border border-dashed px-4 py-8 text-center text-sm">
-      {message}
-    </p>
-  )
-}
 
 export function SessionDetailPage() {
   const { id = '' } = useParams()
@@ -70,7 +68,7 @@ export function SessionDetailPage() {
 
   const [revOpen, setRevOpen] = useState(false)
   const [prOpen, setPrOpen] = useState(false)
-  const [debugOpen, setDebugOpen] = useState(false)
+  const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [scope, setScope] = useState('')
 
@@ -80,13 +78,14 @@ export function SessionDetailPage() {
     q.data?.repoConnectionId ??
     'Repository'
 
-  const hints = q.data ? sessionActionHints(q.data) : null
   const longRunning = start.isPending || revision.isPending
+  const repoId = q.data?.repoConnectionId?.trim() ?? ''
+  const latestPatch = q.data?.patches[q.data.patches.length - 1]
 
   async function submitRevision() {
     try {
       await revision.mutateAsync({ instruction, scope: scope || undefined })
-      toast.success('Revision requested')
+      toast.success('Change request sent')
       setRevOpen(false)
       setInstruction('')
       setScope('')
@@ -98,26 +97,22 @@ export function SessionDetailPage() {
   async function submitApprove() {
     try {
       await approve.mutateAsync()
-      toast.success('Session approved')
+      toast.success('Output approved')
     } catch (e) {
       toast.error(formatErrorForToast(e))
     }
   }
 
-  const repoId = q.data?.repoConnectionId?.trim() ?? ''
-
   async function submitPr() {
     if (!repoId) {
-      toast.error('This session has no repository connection id; cannot create a PR.')
+      toast.error('No repository linked to this run.')
       return
     }
     try {
       const updated = await createPr.mutateAsync(repoId)
       toast.success(
-        updated.prExternalUrl ? 'Pull request created' : 'Pull request creation completed',
-        updated.prExternalUrl
-          ? { description: updated.prExternalUrl }
-          : undefined,
+        updated.prExternalUrl ? 'Pull request published' : 'Publish completed',
+        updated.prExternalUrl ? { description: updated.prExternalUrl } : undefined,
       )
       setPrOpen(false)
     } catch (e) {
@@ -133,8 +128,8 @@ export function SessionDetailPage() {
 
       {q.isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-48 w-full rounded-2xl" />
         </div>
       ) : null}
 
@@ -149,300 +144,304 @@ export function SessionDetailPage() {
               <div className="space-y-1">
                 <p className="font-medium">
                   {start.isPending
-                    ? 'Starting session — server-side orchestration in progress'
-                    : 'Requesting revision — agent is regenerating changes'}
+                    ? 'Starting automation — this runs on the server'
+                    : 'Applying your feedback — the agent is revising changes'}
                 </p>
                 <p className="text-muted-foreground leading-relaxed">
-                  Clone, bootstrap, Copilot CLI, and Playwright can take{' '}
-                  <strong>5–15+ minutes</strong> on hosted Render. Keep this tab
-                  open; the page updates when the API responds.
+                  This can take <strong>5–15+ minutes</strong> on hosted
+                  infrastructure. Keep this tab open.
                 </p>
               </div>
             </div>
           ) : null}
 
-          {/* Review cockpit header */}
-          <div className="border-border/70 bg-surface-raised space-y-5 rounded-2xl border p-5 shadow-sm sm:p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          {/* 1. Hero status & summary */}
+          <div className="border-border/70 bg-surface-raised space-y-4 rounded-2xl border p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-3">
-                <PageHeader
-                  compact
-                  eyebrow="Session review"
-                  title={q.data.sourceLabel ?? q.data.sourceRef}
-                  description={`${repoName} · ${q.data.engine} · updated ${formatDistanceToNow(new Date(q.data.updatedAt), { addSuffix: true })}`}
+                <p className="text-swarm text-xs font-semibold tracking-widest uppercase">
+                  Automation run
+                </p>
+                <h1 className="text-foreground text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {q.data.sourceLabel ?? q.data.sourceRef}
+                </h1>
+                <SessionStatusBadge
+                  status={q.data.status}
+                  workflowStatus={q.data.workflowStatus}
+                  prExternalUrl={q.data.prExternalUrl}
                 />
-                <div className="flex flex-wrap items-center gap-2">
-                  <SessionStatusBadge status={q.data.status} />
-                  {q.data.workflowStatus &&
-                  q.data.workflowStatus !== q.data.status ? (
-                    <span className="text-muted-foreground rounded-full border border-border/60 bg-muted/30 px-2.5 py-0.5 font-mono text-xs">
-                      {q.data.workflowStatus}
-                    </span>
-                  ) : null}
-                </div>
+                <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+                  {getHeroSummary(q.data)}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {repoName} · updated{' '}
+                  {formatDistanceToNow(new Date(q.data.updatedAt), {
+                    addSuffix: true,
+                  })}
+                </p>
               </div>
               <LinkButton variant="ghost" size="sm" to="/sessions" className="shrink-0">
-                ← All sessions
+                ← All runs
               </LinkButton>
             </div>
-
             <WorkflowStrip
               status={q.data.status}
               workflowStatus={q.data.workflowStatus}
+              prExternalUrl={q.data.prExternalUrl}
             />
-
-            {/* Sticky action bar */}
-            <div className="border-border/60 bg-muted/20 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Workflow actions
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={start.isPending || !hints?.canStart}
-                  title={
-                    hints?.canStart
-                      ? 'Materialize workspace and run the first automation round'
-                      : 'Start is only available while the session is in draft or queued.'
-                  }
-                  className="gap-1.5"
-                  onClick={() =>
-                    void start
-                      .mutateAsync(
-                        repoId
-                          ? { repositoryConnectionId: repoId }
-                          : undefined,
-                      )
-                      .then(() => toast.success('Session started'))
-                      .catch((e) => toast.error(formatErrorForToast(e)))
-                  }
-                >
-                  {start.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Play className="size-4" />
-                  )}
-                  {start.isPending ? 'Starting…' : 'Start'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!hints?.canRevise || revision.isPending}
-                  onClick={() => setRevOpen(true)}
-                  className="gap-1.5"
-                >
-                  Request revision
-                </Button>
-                <Separator orientation="vertical" className="hidden h-8 sm:block" />
-                <Button
-                  variant="default"
-                  size="sm"
-                  disabled={approve.isPending || !hints?.canApprove}
-                  className="bg-swarm text-swarm-foreground hover:bg-swarm/90 gap-1.5"
-                  onClick={() => void submitApprove()}
-                >
-                  {approve.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <ShieldCheck className="size-4" />
-                  )}
-                  Approve
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    createPr.isPending || !hints?.canCreatePr || !repoId
-                  }
-                  onClick={() => setPrOpen(true)}
-                  className="gap-1.5"
-                >
-                  <GitPullRequest className="size-4" />
-                  Create PR
-                </Button>
-              </div>
-            </div>
           </div>
 
-          {q.data.prExternalUrl ? (
-            <Card className="border-status-succeeded/30 bg-status-succeeded/8 shadow-sm">
-              <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Pull request shipped</p>
-                  <p className="text-muted-foreground text-xs">
-                    {q.data.prStatus ?? 'created'}
-                    {q.data.prExternalId ? ` · #${q.data.prExternalId}` : ''}
-                  </p>
-                </div>
-                <a
-                  href={q.data.prExternalUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-swarm text-sm font-medium underline-offset-4 hover:underline"
-                >
-                  Open on GitHub →
-                </a>
-              </CardContent>
-            </Card>
-          ) : null}
+          {/* 2. What changed */}
+          <Card className="border-border/70 bg-surface shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileDiff className="text-muted-foreground size-5" />
+                What changed
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm leading-relaxed">
+                {q.data.patchSummary ??
+                  'A summary of code changes will appear here after the agent produces a diff.'}
+              </p>
+              {latestPatch ? (
+                <p className="text-muted-foreground text-xs">
+                  Latest {friendlyPatchLabel(latestPatch.version)}
+                  {latestPatch.filesChanged != null
+                    ? ` · ${latestPatch.filesChanged} files touched`
+                    : ''}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
 
-          {/* Two-column cockpit */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
-              <Card className="border-border/70 bg-surface shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Execution result</CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    Latest runner output and attempt history.
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-muted/25 border-border/60 rounded-xl border p-4">
-                    <p className="text-sm leading-relaxed">
-                      {q.data.latestExecutionSummary ??
-                        'No execution summary yet. Start the session or wait for the runner.'}
+          {/* 3. Validation result */}
+          <Card className="border-border/70 bg-surface shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Validation result</CardTitle>
+              <p className="text-muted-foreground text-sm">
+                Plain-language outcome from the latest test run.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-muted/20 border-border/60 rounded-xl border p-4">
+                <p className="text-sm leading-relaxed">
+                  {q.data.latestExecutionSummary ??
+                    'No validation results yet. Start automation or wait for the agent to finish.'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 4. Next action — gated */}
+          <SessionNextAction
+            session={q.data}
+            repoId={repoId}
+            startPending={start.isPending}
+            approvePending={approve.isPending}
+            createPrPending={createPr.isPending}
+            onStart={() =>
+              void start
+                .mutateAsync(
+                  repoId ? { repositoryConnectionId: repoId } : undefined,
+                )
+                .then(() => toast.success('Automation started'))
+                .catch((e) => toast.error(formatErrorForToast(e)))
+            }
+            onRequestChanges={() => setRevOpen(true)}
+            onApprove={() => void submitApprove()}
+            onCreatePr={() => setPrOpen(true)}
+          />
+
+          {/* 5. Supporting evidence — collapsed */}
+          <Card className="border-border/60 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setEvidenceOpen((o) => !o)}
+              className="flex w-full items-center justify-between p-4 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <History className="text-muted-foreground size-4" />
+                <span className="font-medium">Supporting evidence</span>
+                <span className="text-muted-foreground text-xs">
+                  Feedback history & run timeline
+                </span>
+              </div>
+              <ChevronDown
+                className={cn(
+                  'text-muted-foreground size-4 transition-transform',
+                  evidenceOpen && 'rotate-180',
+                )}
+              />
+            </button>
+            {evidenceOpen ? (
+              <CardContent className="space-y-6 border-t pt-4">
+                <div>
+                  <p className="mb-3 text-sm font-medium">Your feedback</p>
+                  {q.data.reviews.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      No change requests yet.
                     </p>
-                  </div>
-                  <div className="space-y-2">
-                    {q.data.executions.length === 0
-                      ? sectionEmpty(
-                          'No execution attempts yet. Start the session to record runner output.',
-                        )
-                      : null}
-                    {q.data.executions.map((ex) => (
+                  ) : (
+                    <div className="space-y-2">
+                      {q.data.reviews.map((rev) => (
+                        <div
+                          key={rev.id}
+                          className="border-border/60 rounded-lg border bg-surface-raised p-3"
+                        >
+                          <p className="text-muted-foreground mb-1 text-xs">
+                            {formatDistanceToNow(new Date(rev.createdAt), {
+                              addSuffix: true,
+                            })}
+                          </p>
+                          <p className="text-sm leading-relaxed">
+                            {rev.instruction}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-3 text-sm font-medium">Run timeline</p>
+                  {q.data.rounds.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      Timeline appears after automation begins.
+                    </p>
+                  ) : (
+                    <div className="relative space-y-4">
+                      <div className="bg-border absolute top-2 bottom-2 left-[11px] w-px" />
+                      {q.data.rounds.map((r, idx) => (
+                        <motion.div
+                          key={r.id}
+                          initial={{ opacity: 0, x: -4 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.03 }}
+                          className="relative flex gap-3 pl-8"
+                        >
+                          <div className="absolute top-0.5 left-0 flex size-6 items-center justify-center rounded-full border bg-card">
+                            {r.status === 'complete' ? (
+                              <CheckCircle2 className="text-status-succeeded size-3.5" />
+                            ) : (
+                              <CircleDot className="text-swarm size-3.5" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {friendlyRoundTitle(r.number, r.title)}
+                            </p>
+                            {r.notes ? (
+                              <p className="text-muted-foreground text-sm">
+                                {r.notes}
+                              </p>
+                            ) : null}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            ) : null}
+          </Card>
+
+          {/* 6. Advanced — tabs */}
+          <Tabs defaultValue="technical" className="w-full">
+            <TabsList className="bg-muted/40 h-auto flex-wrap justify-start gap-1 rounded-xl p-1">
+              <TabsTrigger value="technical" className="rounded-lg text-xs">
+                Technical details
+              </TabsTrigger>
+              <TabsTrigger value="history" className="rounded-lg text-xs">
+                Validation history
+              </TabsTrigger>
+              <TabsTrigger value="metadata" className="rounded-lg text-xs">
+                Metadata
+              </TabsTrigger>
+              <TabsTrigger value="debug" className="rounded-lg text-xs">
+                Raw data
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="technical" className="mt-4 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Code revisions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {q.data.patches.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">None yet.</p>
+                  ) : (
+                    q.data.patches.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex justify-between rounded-lg bg-muted/20 px-3 py-2 text-sm"
+                      >
+                        <span>{friendlyPatchLabel(p.version)}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {p.filesChanged != null
+                            ? `${p.filesChanged} files`
+                            : 'Pending'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Validation runs</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {q.data.executions.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">None yet.</p>
+                  ) : (
+                    q.data.executions.map((ex) => (
                       <div
                         key={ex.id}
-                        className="border-border/60 flex flex-col gap-2 rounded-xl border bg-surface-raised p-4 sm:flex-row sm:items-center sm:justify-between"
+                        className="border-border/60 flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
                           <p className="text-sm font-medium">
-                            Round {ex.roundNumber}
+                            {friendlyValidationLabel(ex.roundNumber)}
                           </p>
                           <p className="text-muted-foreground text-sm">
-                            {ex.summary ?? 'No summary yet.'}
+                            {ex.summary ?? 'No summary.'}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <ExecutionStatusBadge status={ex.status} />
                           {ex.exitCode != null ? (
-                            <span className="text-muted-foreground text-xs tabular-nums">
+                            <span className="text-muted-foreground font-mono text-xs">
                               exit {ex.exitCode}
                             </span>
                           ) : null}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/70 bg-surface shadow-sm">
-                <CardHeader className="flex flex-row items-center gap-2">
-                  <History className="text-muted-foreground size-4" />
-                  <div>
-                    <CardTitle className="text-lg">Rounds timeline</CardTitle>
-                    <p className="text-muted-foreground text-sm">
-                      Progress through automation rounds.
-                    </p>
-                  </div>
-                </CardHeader>
-                <CardContent className="relative">
-                  {q.data.rounds.length === 0 ? (
-                    sectionEmpty('No rounds yet — timeline fills in after work begins.')
-                  ) : (
-                    <>
-                      <div className="bg-border absolute top-2 bottom-2 left-[11px] w-px" />
-                      <div className="space-y-6">
-                        {q.data.rounds.map((r, idx) => (
-                          <motion.div
-                            key={r.id}
-                            initial={{ opacity: 0, x: -6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.04 }}
-                            className="relative flex gap-4 pl-8"
-                          >
-                            <div className="absolute top-1 left-0 flex size-6 items-center justify-center rounded-full border bg-card">
-                              {r.status === 'complete' ? (
-                                <CheckCircle2 className="text-status-succeeded size-3.5" />
-                              ) : (
-                                <CircleDot className="text-swarm size-3.5" />
-                              )}
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold">
-                                  Round {r.number}: {r.title}
-                                </p>
-                                <span className="text-muted-foreground text-xs capitalize">
-                                  {r.status}
-                                </span>
-                              </div>
-                              {r.notes ? (
-                                <p className="text-muted-foreground text-sm leading-relaxed">
-                                  {r.notes}
-                                </p>
-                              ) : null}
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </>
+                    ))
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              <Card className="border-border/70 bg-surface shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Review history</CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    Structured feedback sent back to the agent.
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {q.data.reviews.length === 0
-                    ? sectionEmpty('No review requests yet.')
-                    : null}
-                  {q.data.reviews.map((rev) => (
-                    <div
-                      key={rev.id}
-                      className="border-border/60 rounded-xl border bg-surface-raised p-4"
-                    >
-                      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">
-                          {formatDistanceToNow(new Date(rev.createdAt), {
-                            addSuffix: true,
-                          })}
-                        </span>
-                        <span className="bg-muted rounded-full px-2 py-0.5 font-medium capitalize">
-                          {rev.status}
-                        </span>
-                        {rev.scope ? (
-                          <span className="text-muted-foreground font-mono">
-                            {rev.scope}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-sm leading-relaxed">{rev.instruction}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar panels */}
-            <div className="space-y-6">
-              <Card className="border-border/70 bg-surface shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base">Session metadata</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <MetaRow label="Source ref" value={q.data.sourceRef} mono />
+            <TabsContent value="metadata" className="mt-4">
+              <Card>
+                <CardContent className="grid gap-4 p-4 text-sm sm:grid-cols-2">
+                  <MetaRow label="Source reference" value={q.data.sourceRef} mono />
                   {q.data.sourceLabel ? (
                     <MetaRow label="Source label" value={q.data.sourceLabel} />
                   ) : null}
                   <MetaRow label="Repository" value={repoName} />
-                  <MetaRow label="Engine" value={q.data.engine} mono />
+                  <MetaRow label="Coding engine" value={q.data.engine} mono />
+                  {q.data.workflowStatus ? (
+                    <MetaRow
+                      label="Workflow state (API)"
+                      value={q.data.workflowStatus}
+                      mono
+                    />
+                  ) : null}
                   <MetaRow
                     label="Created"
                     value={formatDistanceToNow(new Date(q.data.createdAt), {
@@ -451,104 +450,48 @@ export function SessionDetailPage() {
                   />
                 </CardContent>
               </Card>
-
-              <Card className="border-border/70 bg-surface shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FileDiff className="text-muted-foreground size-4" />
-                    Patch versions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <p className="text-muted-foreground leading-relaxed">
-                    {q.data.patchSummary ??
-                      'Patch metadata appears after the first successful diff.'}
-                  </p>
-                  <Separator />
-                  {q.data.patches.length === 0
-                    ? sectionEmpty('No patch versions yet.')
-                    : null}
-                  {q.data.patches.map((p) => (
-                    <div
-                      key={p.id}
-                      className="bg-muted/25 flex items-center justify-between rounded-lg px-3 py-2 text-xs"
-                    >
-                      <span className="font-medium">v{p.version}</span>
-                      <span className="text-muted-foreground">
-                        {p.filesChanged != null
-                          ? `${p.filesChanged} files`
-                          : 'Pending'}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {(q.data.prPreviewTitle || q.data.prPreviewBody) && !q.data.prExternalUrl ? (
-                <Card className="border-border/70 bg-surface shadow-sm">
+              {(q.data.prPreviewTitle || q.data.prPreviewBody) &&
+              !q.data.prExternalUrl ? (
+                <Card className="mt-4">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <GitPullRequest className="text-muted-foreground size-4" />
-                      PR preview
-                    </CardTitle>
+                    <CardTitle className="text-base">PR preview</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
+                    <MetaRow
+                      label="Title"
+                      value={q.data.prPreviewTitle ?? 'Generated server-side'}
+                    />
                     <div>
-                      <p className="text-muted-foreground text-xs uppercase">Title</p>
-                      <p className="font-medium">
-                        {q.data.prPreviewTitle ?? 'Generated server-side'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs uppercase">Body</p>
-                      <p className="text-muted-foreground mt-1 max-h-32 overflow-auto whitespace-pre-wrap text-xs leading-relaxed">
+                      <p className="text-muted-foreground text-xs">Body</p>
+                      <p className="text-muted-foreground mt-1 max-h-40 overflow-auto whitespace-pre-wrap text-xs">
                         {q.data.prPreviewBody ?? '—'}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
               ) : null}
+            </TabsContent>
 
-              <Card className="border-border/60 border-dashed bg-muted/10 shadow-none">
-                <button
-                  type="button"
-                  onClick={() => setDebugOpen((o) => !o)}
-                  className="flex w-full items-center justify-between p-4 text-left"
-                >
-                  <span className="text-muted-foreground text-sm font-medium">
-                    Advanced / debug
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      'text-muted-foreground size-4 transition-transform',
-                      debugOpen && 'rotate-180',
-                    )}
-                  />
-                </button>
-                {debugOpen ? (
-                  <CardContent className="pt-0">
-                    <pre className="bg-muted/30 border-border/60 max-h-80 overflow-auto rounded-lg border p-3 text-[11px] leading-relaxed">
-                      {JSON.stringify(q.data, null, 2)}
-                    </pre>
-                  </CardContent>
-                ) : null}
-              </Card>
-            </div>
-          </div>
+            <TabsContent value="debug" className="mt-4">
+              <pre className="bg-muted/30 border-border/60 max-h-[480px] overflow-auto rounded-xl border p-4 text-[11px] leading-relaxed">
+                {JSON.stringify(q.data, null, 2)}
+              </pre>
+            </TabsContent>
+          </Tabs>
         </>
       ) : null}
 
       <Dialog open={revOpen} onOpenChange={setRevOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request revision</DialogTitle>
+            <DialogTitle>Request changes</DialogTitle>
             <DialogDescription>
-              Be explicit about what should change. Optional scope narrows files
-              or services for the next attempt.
+              Tell the agent what to fix. Be specific — QA context helps more
+              than keywords.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <FormField id="instruction" label="Instructions">
+            <FormField id="instruction" label="What should change?">
               <Textarea
                 id="instruction"
                 rows={5}
@@ -556,7 +499,11 @@ export function SessionDetailPage() {
                 onChange={(e) => setInstruction(e.target.value)}
               />
             </FormField>
-            <FormField id="scope" label="Target scope (optional)">
+            <FormField
+              id="scope"
+              label="Focus area (optional)"
+              hint="e.g. packages/api or checkout flow"
+            >
               <Input
                 id="scope"
                 value={scope}
@@ -576,7 +523,7 @@ export function SessionDetailPage() {
               {revision.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : null}
-              Send request
+              Send to agent
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -585,23 +532,23 @@ export function SessionDetailPage() {
       <Dialog open={prOpen} onOpenChange={setPrOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create pull request</DialogTitle>
+            <DialogTitle>Publish pull request</DialogTitle>
             <DialogDescription>
-              Confirm the title and body QSwarm will use when opening the PR.
+              Confirm the title and description QSwarm will use on GitHub.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm">
             <div>
               <p className="text-muted-foreground text-xs uppercase">Title</p>
               <p className="font-medium">
-                {q.data?.prPreviewTitle ?? 'Title will be generated server-side.'}
+                {q.data?.prPreviewTitle ?? 'Generated server-side.'}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs uppercase">Body</p>
+              <p className="text-muted-foreground text-xs uppercase">Description</p>
               <div className="bg-muted/30 border-border/60 mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border p-3 text-sm leading-relaxed">
                 {q.data?.prPreviewBody ??
-                  'Body templates come from branch policy + session metadata.'}
+                  'From your branch policy and run metadata.'}
               </div>
             </div>
           </div>
@@ -617,13 +564,10 @@ export function SessionDetailPage() {
               {createPr.isPending ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Creating PR…
+                  Publishing…
                 </>
               ) : (
-                <>
-                  <ChevronRight className="size-4" />
-                  Confirm & create PR
-                </>
+                'Confirm & publish'
               )}
             </Button>
           </DialogFooter>

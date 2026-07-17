@@ -53,12 +53,12 @@ const filters = [
 type FilterTab = (typeof filters)[number]
 
 const filterLabels: Record<FilterTab, string> = {
-  all: 'All',
-  awaiting_review: 'Awaiting review',
-  running: 'Running',
-  revising: 'Revising',
-  draft: 'Draft',
-  failed: 'Failed',
+  all: 'All runs',
+  awaiting_review: 'Ready for review',
+  running: 'In progress',
+  revising: 'Applying feedback',
+  draft: 'Not started',
+  failed: 'Needs attention',
 }
 
 function parseFilter(value: string | null): FilterTab {
@@ -137,11 +137,11 @@ export function SessionsPage() {
     <div className="space-y-8">
       <PageHeader
         eyebrow={isReviewQueue ? 'Review' : 'Workflow'}
-        title={isReviewQueue ? 'Review queue' : 'Sessions'}
+        title={isReviewQueue ? 'Ready for review' : 'Automation runs'}
         description={
           isReviewQueue
-            ? 'Approve or request revisions on sessions waiting for human review.'
-            : 'Every QA run is a session — track engine, repository, and lifecycle from draft through PR.'
+            ? 'Runs waiting for your approval or change requests.'
+            : 'Track each QA automation from setup through publish.'
         }
         actions={
           <Dialog
@@ -155,11 +155,11 @@ export function SessionsPage() {
           >
             <DialogTrigger className={buttonVariants()}>
               <Plus className="size-4" />
-              New session
+              New automation run
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Create session</DialogTitle>
+                <DialogTitle>Create automation run</DialogTitle>
                 <DialogDescription>
                   Connect a repository, pick the coding engine, and identify the
                   source signal your backend expects.
@@ -335,7 +335,7 @@ export function SessionsPage() {
           </TabsList>
           <p className="text-muted-foreground flex items-center gap-2 text-xs">
             <Filter className="size-3.5" />
-            {q.data?.length ?? 0} session{(q.data?.length ?? 0) === 1 ? '' : 's'}
+            {q.data?.length ?? 0} run{(q.data?.length ?? 0) === 1 ? '' : 's'}
           </p>
         </div>
       </Tabs>
@@ -354,7 +354,7 @@ export function SessionsPage() {
       {!q.isLoading && !q.data?.length ? (
         <EmptyState
           icon={Filter}
-          title={tab === 'all' ? 'No sessions yet' : 'No sessions match'}
+          title={tab === 'all' ? 'No automation runs yet' : 'No runs match this filter'}
           description={
             tab === 'all'
               ? 'Create a session to kick off a QA run, or connect a repository first.'
@@ -372,6 +372,7 @@ export function SessionsPage() {
             repo={repoLabel(s.repoConnectionId)}
             engine={s.engine}
             status={s.status}
+            workflowStatus={s.workflowStatus}
             updatedAt={s.updatedAt ?? s.createdAt}
           />
         ))}
@@ -386,6 +387,7 @@ function SessionListRow({
   repo,
   engine,
   status,
+  workflowStatus,
   updatedAt,
 }: {
   id: string
@@ -393,6 +395,7 @@ function SessionListRow({
   repo: string
   engine: string
   status: SessionStatus
+  workflowStatus?: string
   updatedAt: string
 }) {
   const attention = needsAttention(status)
@@ -425,7 +428,10 @@ function SessionListRow({
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <SessionStatusBadge status={status} />
+            <SessionStatusBadge
+              status={status}
+              workflowStatus={workflowStatus}
+            />
             <span className="text-muted-foreground text-xs tabular-nums">
               {formatDistanceToNow(new Date(updatedAt), { addSuffix: true })}
             </span>

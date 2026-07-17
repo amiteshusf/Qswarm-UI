@@ -31,7 +31,7 @@ const navGroups: NavGroup[] = [
     label: 'Operations',
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/sessions', label: 'Sessions', icon: Workflow, emphasis: true },
+      { to: '/sessions', label: 'Automation runs', icon: Workflow, emphasis: true },
       {
         to: '/sessions?status=awaiting_review',
         label: 'Review queue',
