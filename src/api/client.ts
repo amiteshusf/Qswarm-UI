@@ -21,6 +21,10 @@ import {
   mockSettings,
 } from '@/api/mocks/data'
 import {
+  buildMockSessionBrief,
+  buildMockSessionReviewData,
+} from '@/api/mocks/session-product'
+import {
   branchPolicyInputSchema,
   branchPolicySchema,
   dashboardSchema,
@@ -29,7 +33,9 @@ import {
   repoConnectionSchema,
   revisionRequestSchema,
   sessionCreateInputSchema,
+  sessionBriefSchema,
   sessionDetailSchema,
+  sessionReviewDataSchema,
   sessionSummarySchema,
   settingsSchema,
 } from '@/api/schemas'
@@ -408,6 +414,52 @@ export const api = {
     }
     const data = await fetchJson<unknown>(url('sessions', id))
     return parseWithSchema(sessionDetailSchema, data, `GET /sessions/${id}`)
+  },
+
+  async getSessionBrief(id: string) {
+    if (useMockData) {
+      await delay(80)
+      const detail =
+        id === mockSessionsStore.detail.id
+          ? mockSessionsStore.detail
+          : {
+              ...mockSessionDetail,
+              ...(mockSessionsStore.list.find((s) => s.id === id) ?? {}),
+            }
+      return sessionBriefSchema.parse(
+        buildMockSessionBrief(sessionDetailSchema.parse(detail)),
+      )
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'brief'))
+    return parseWithSchema(
+      sessionBriefSchema,
+      data,
+      `GET /sessions/${id}/brief`,
+    )
+  },
+
+  async getSessionReviewData(id: string) {
+    if (useMockData) {
+      await delay(100)
+      const detail =
+        id === mockSessionsStore.detail.id
+          ? mockSessionsStore.detail
+          : sessionDetailSchema.parse({
+              ...mockSessionDetail,
+              ...(mockSessionsStore.list.find((s) => s.id === id) ?? {}),
+              rounds: mockSessionDetail.rounds,
+              patches: mockSessionDetail.patches,
+              executions: mockSessionDetail.executions,
+              reviews: mockSessionDetail.reviews,
+            })
+      return sessionReviewDataSchema.parse(buildMockSessionReviewData(detail))
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'review-data'))
+    return parseWithSchema(
+      sessionReviewDataSchema,
+      data,
+      `GET /sessions/${id}/review-data`,
+    )
   },
 
   async createSession(input: unknown) {

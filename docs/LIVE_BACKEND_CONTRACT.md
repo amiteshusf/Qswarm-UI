@@ -58,7 +58,21 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 - **Shape:** flat read-only slice, e.g. `applicationName`, `environment`, `debug`, `jira: { useStub, configured }`, `codingProvider`, `workspaceRoot`, `claudeCodeEnabled`, `copilotAgentEnabled`, `notes` — **not** the older nested `engine` / `infrastructure` / `source` document.
 
-## Session lifecycle POSTs (`/api/v1/sessions/{id}/…`)
+## `GET /api/v1/sessions/{id}/brief`
+
+- **Shape:** `{ sessionId, sessionState, sourceSummary, setup, automationBrief }`
+- **`sessionState`:** `status`, `workflowStatus`, `jobStatus`, `currentRoundNumber`, `nextActions[]`, timestamps
+- **`sourceSummary`:** `sourceReference`, `sourceTitle`, `caseId`, `objective`, optional `missingInformation[]`
+- **`setup`:** `engine`, `repositoryConnectionId`, nested `repository`, `branchPolicy`, `workspaceConfigured`
+- **`automationBrief`:** `available`, `summary`, optional `targetTestFile`, `filesToModify`, `frameworkType`, etc.
+
+## `GET /api/v1/sessions/{id}/review-data`
+
+- **Shape:** `{ sessionId, reviewSummary, changedFiles[], reviewConversation[], prInfo }`
+- **`changedFiles[]`:** `path`, `action` (`modify`|`create`|…), `beforeContent`/`previousContent`, `afterContent`/`currentContent`, `unifiedDiff`, `summary`, line counts
+- **`reviewConversation[]`:** `id`, `type`, `actor`, `text`, `createdAt`, optional `roundNumber`, `status`, `scope`
+- **`prInfo`:** nullable; `externalUrl`, `externalId`, `title`, `body`, `status`, branches
+
 
 All are **synchronous** on hosted Render (HTTP **200**, not 202). Start and revision can take **5–15+ minutes** (clone, npm, Copilot CLI, Playwright).
 

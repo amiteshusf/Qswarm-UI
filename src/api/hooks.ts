@@ -94,6 +94,30 @@ export function useSession(id: string | undefined) {
   })
 }
 
+export function useSessionBrief(id: string | undefined) {
+  return useQuery({
+    queryKey: qk.sessionBrief(id ?? ''),
+    queryFn: () => api.getSessionBrief(id!),
+    enabled: Boolean(id),
+    staleTime: 30_000,
+  })
+}
+
+export function useSessionReviewData(id: string | undefined) {
+  return useQuery({
+    queryKey: qk.sessionReviewData(id ?? ''),
+    queryFn: () => api.getSessionReviewData(id!),
+    enabled: Boolean(id),
+    staleTime: 15_000,
+  })
+}
+
+function invalidateSessionQueries(qc: ReturnType<typeof useQueryClient>, id: string) {
+  void qc.invalidateQueries({ queryKey: qk.session(id) })
+  void qc.invalidateQueries({ queryKey: qk.sessionBrief(id) })
+  void qc.invalidateQueries({ queryKey: qk.sessionReviewData(id) })
+}
+
 export function useCreateSession() {
   const qc = useQueryClient()
   return useMutation({
@@ -101,7 +125,7 @@ export function useCreateSession() {
     onSuccess: (data) => {
       void qc.invalidateQueries({ queryKey: ['sessions'] })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
-      void qc.invalidateQueries({ queryKey: qk.session(data.id) })
+      invalidateSessionQueries(qc, data.id)
     },
   })
 }
@@ -113,8 +137,8 @@ export function useStartSession(id: string) {
       api.startSession(id, opts),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['sessions'] })
-      void qc.invalidateQueries({ queryKey: qk.session(id) })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
     },
   })
 }
@@ -125,8 +149,8 @@ export function useRequestRevision(id: string) {
     mutationFn: (input: unknown) => api.requestRevision(id, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['sessions'] })
-      void qc.invalidateQueries({ queryKey: qk.session(id) })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
     },
   })
 }
@@ -137,8 +161,8 @@ export function useApproveSession(id: string) {
     mutationFn: () => api.approveSession(id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['sessions'] })
-      void qc.invalidateQueries({ queryKey: qk.session(id) })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
     },
   })
 }
@@ -150,8 +174,8 @@ export function useCreatePr(id: string) {
       api.createPr(id, repositoryConnectionId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['sessions'] })
-      void qc.invalidateQueries({ queryKey: qk.session(id) })
       void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
     },
   })
 }

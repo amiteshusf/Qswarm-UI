@@ -1,22 +1,31 @@
 import { formatDistanceToNow } from 'date-fns'
-import { Bot, User } from 'lucide-react'
+import { Bot, CheckCircle2, GitPullRequest, User, Zap } from 'lucide-react'
 
-import type { SessionDetail } from '@/api/schemas'
+import type {
+  ReviewConversationMessage,
+  SessionDetail,
+  SessionReviewData,
+} from '@/api/schemas'
 import { cn } from '@/lib/utils'
 
 type Props = {
   session: SessionDetail
+  reviewData?: SessionReviewData | null
 }
 
-export function ReviewConversationPanel({ session }: Props) {
-  const messages = buildConversation(session)
+export function ReviewConversationPanel({ session, reviewData }: Props) {
+  const messages = reviewData?.reviewConversation?.length
+    ? mapLiveConversation(reviewData.reviewConversation)
+    : buildFallbackConversation(session)
 
   return (
     <div className="border-border/70 bg-surface flex min-h-[240px] flex-col rounded-2xl border shadow-sm">
       <div className="border-border/60 border-b px-4 py-3">
         <p className="font-medium">Review conversation</p>
         <p className="text-muted-foreground text-xs">
-          Instructions you send and automation responses
+          {reviewData?.reviewConversation?.length
+            ? 'Live thread from automation and your instructions'
+            : 'Instructions you send and automation responses'}
         </p>
       </div>
 
@@ -28,53 +37,7 @@ export function ReviewConversationPanel({ session }: Props) {
           </p>
         ) : (
           messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                'flex gap-3',
-                msg.role === 'user' ? 'flex-row-reverse' : 'flex-row',
-              )}
-            >
-              <div
-                className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-full',
-                  msg.role === 'user'
-                    ? 'bg-swarm/15 text-swarm'
-                    : 'bg-muted text-muted-foreground',
-                )}
-              >
-                {msg.role === 'user' ? (
-                  <User className="size-4" />
-                ) : (
-                  <Bot className="size-4" />
-                )}
-              </div>
-              <div
-                className={cn(
-                  'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                  msg.role === 'user'
-                    ? 'bg-swarm/12 text-foreground'
-                    : 'bg-muted/50 text-foreground border-border/50 border',
-                )}
-              >
-                <p className="text-muted-foreground mb-1 text-[10px] font-medium uppercase tracking-wide">
-                  {msg.role === 'user' ? 'You' : 'QSwarm agent'}
-                  {' · '}
-                  {formatDistanceToNow(new Date(msg.at), { addSuffix: true })}
-                </p>
-                <p>{msg.body}</p>
-                {msg.scope ? (
-                  <p className="text-muted-foreground mt-2 font-mono text-xs">
-                    Scope: {msg.scope}
-                  </p>
-                ) : null}
-                {msg.status ? (
-                  <p className="text-muted-foreground mt-1 text-xs capitalize">
-                    {msg.status}
-                  </p>
-                ) : null}
-              </div>
-            </div>
+            <ConversationBubble key={msg.id} message={msg} />
           ))
         )}
       </div>
@@ -82,15 +45,103 @@ export function ReviewConversationPanel({ session }: Props) {
   )
 }
 
-function buildConversation(session: SessionDetail) {
-  const items: Array<{
-    id: string
-    role: 'user' | 'agent'
-    body: string
-    at: string
-    scope?: string
-    status?: string
-  }> = []
+type UiMessage = {
+  id: string
+  role: 'user' | 'agent' | 'system'
+  body: string
+  at: string
+  scope?: string
+  status?: string
+  kind?: string
+}
+
+function ConversationBubble({ message }: { message: UiMessage }) {
+  const isUser = message.role === 'user'
+  const Icon =
+    message.kind === 'pr_created'
+      ? GitPullRequest
+      : message.kind === 'execution_result'
+        ? Zap
+        : message.kind === 'approve'
+          ? CheckCircle2
+          : isUser
+            ? User
+            : Bot
+
+  return (
+    <div
+      className={cn('flex gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}
+    >
+      <div
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-full',
+          isUser
+            ? 'bg-swarm/15 text-swarm'
+            : 'bg-muted text-muted-foreground',
+        )}
+      >
+        <Icon className="size-4" />
+      </div>
+      <div
+        className={cn(
+          'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
+          isUser
+            ? 'bg-swarm/12 text-foreground'
+            : 'bg-muted/50 text-foreground border-border/50 border',
+        )}
+      >
+        <p className="text-muted-foreground mb-1 text-[10px] font-medium uppercase tracking-wide">
+          {labelForMessage(message)}
+          {' · '}
+          {formatDistanceToNow(new Date(message.at), { addSuffix: true })}
+        </p>
+        <p className="whitespace-pre-wrap">{message.body}</p>
+        {message.scope ? (
+          <p className="text-muted-foreground mt-2 font-mono text-xs">
+            Scope: {message.scope}
+          </p>
+        ) : null}
+        {message.status ? (
+          <p className="text-muted-foreground mt-1 text-xs capitalize">
+            {message.status}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function labelForMessage(msg: UiMessage): string {
+  if (msg.role === 'user') return 'You'
+  if (msg.kind === 'execution_result') return 'Validation'
+  if (msg.kind === 'pr_created') return 'Pull request'
+  if (msg.kind === 'approve') return 'Approval'
+  if (msg.kind === 'request_revision') return 'Change request'
+  return 'QSwarm'
+}
+
+function mapLiveConversation(
+  items: ReviewConversationMessage[],
+): UiMessage[] {
+  return items.map((item) => ({
+    id: item.id,
+    role: userTypes.has(item.type) ? 'user' : 'agent',
+    body: item.text,
+    at: item.createdAt,
+    scope: item.scope,
+    status: item.status,
+    kind: item.type,
+  }))
+}
+
+const userTypes = new Set([
+  'request_revision',
+  'approve',
+  'user',
+])
+
+function buildFallbackConversation(session: SessionDetail): UiMessage[] {
+  const items: UiMessage[] = []
 
   for (const rev of session.reviews) {
     items.push({
@@ -100,6 +151,7 @@ function buildConversation(session: SessionDetail) {
       at: rev.createdAt,
       scope: rev.scope,
       status: rev.status,
+      kind: 'request_revision',
     })
   }
 

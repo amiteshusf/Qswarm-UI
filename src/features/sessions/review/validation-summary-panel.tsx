@@ -1,19 +1,27 @@
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 
-import type { SessionDetail } from '@/api/schemas'
+import type { SessionDetail, SessionReviewData } from '@/api/schemas'
 import { ExecutionStatusBadge } from '@/components/patterns/status-badges'
 import { friendlyValidationLabel } from '@/features/sessions/session-lifecycle'
 import { cn } from '@/lib/utils'
 
 type Props = {
   session: SessionDetail
+  reviewData?: SessionReviewData | null
 }
 
-export function ValidationSummaryPanel({ session }: Props) {
+export function ValidationSummaryPanel({ session, reviewData }: Props) {
+  const liveStatus = reviewData?.reviewSummary.latestExecutionStatus
+  const liveSummary = reviewData?.reviewSummary.validationSummary?.trim()
+
   const latest = session.executions[session.executions.length - 1]
-  const passed = latest?.status === 'passed'
-  const failed = latest?.status === 'failed'
-  const running = latest?.status === 'running'
+  const status = liveStatus ?? latest?.status ?? 'pending'
+  const summary =
+    liveSummary || session.latestExecutionSummary || 'No validation results yet.'
+
+  const passed = status === 'passed'
+  const failed = status === 'failed'
+  const running = status === 'running'
 
   return (
     <div className="space-y-4">
@@ -44,10 +52,9 @@ export function ValidationSummaryPanel({ session }: Props) {
                   : 'Validation result'}
           </p>
         </div>
-        <p className="text-sm leading-relaxed">
-          {session.latestExecutionSummary ??
-            'No validation results yet. Start automation or wait for the agent to finish.'}
-        </p>
+        <pre className="text-sm leading-relaxed whitespace-pre-wrap font-sans">
+          {summary}
+        </pre>
       </div>
 
       {session.executions.length > 1 ? (

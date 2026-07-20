@@ -356,6 +356,140 @@ export const revisionRequestSchema = z
     scope: v.scope?.trim() || undefined,
   }))
 
+// --- Session product endpoints (GET /sessions/{id}/brief, /review-data) ---
+
+export const sessionBriefStateSchema = z.object({
+  status: z.string(),
+  workflowStatus: z.string().optional(),
+  jobStatus: z.string().optional(),
+  currentRoundNumber: z.coerce.number().optional(),
+  nextActions: z.array(z.string()).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export const sessionSourceSummarySchema = z.object({
+  sourceSystem: z.string().optional(),
+  sourceReference: z.string(),
+  caseId: z.string().optional(),
+  sourceTitle: z.string().optional(),
+  objective: z.string().optional(),
+  missingInformation: z.array(z.string()).optional(),
+})
+
+export const sessionBriefRepositorySchema = z.object({
+  owner: z.string().optional(),
+  name: z.string().optional(),
+  baseBranch: z.string().optional(),
+  displayName: z.string().optional(),
+  provider: z.string().optional(),
+  defaultBranch: z.string().optional(),
+  cloneUrlRedacted: z.boolean().optional(),
+})
+
+export const sessionBriefBranchPolicySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  baseBranch: z.string().optional(),
+  branchPattern: z.string().optional(),
+  prTitleTemplate: z.string().optional(),
+  prBodyTemplate: z.string().optional(),
+  repoConnectionId: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+})
+
+export const sessionAutomationBriefSchema = z.object({
+  available: z.boolean(),
+  planVersion: z.coerce.number().optional(),
+  planVersionId: z.string().optional(),
+  frameworkType: z.string().optional(),
+  targetTestFile: z.string().optional(),
+  filesToModify: z.array(z.string()).optional(),
+  actionOnTargetTestFile: z.string().optional(),
+  frameworkSummary: z.record(z.string(), z.unknown()).optional(),
+  repoContextSummary: z.record(z.string(), z.unknown()).optional(),
+  summary: z.string().optional(),
+})
+
+export const sessionBriefSchema = z.object({
+  sessionId: z.string(),
+  sessionState: sessionBriefStateSchema,
+  sourceSummary: sessionSourceSummarySchema,
+  setup: z.object({
+    engine: z.string(),
+    repositoryConnectionId: z.string(),
+    repository: sessionBriefRepositorySchema.optional(),
+    branchPolicy: sessionBriefBranchPolicySchema.optional(),
+    branchPolicyId: z.string().optional(),
+    workspaceConfigured: z.boolean().optional(),
+  }),
+  automationBrief: sessionAutomationBriefSchema,
+})
+
+export const reviewChangedFileSchema = z.object({
+  path: z.string(),
+  action: z.enum(['modify', 'create', 'delete', 'rename']).optional(),
+  currentContent: z.string().optional(),
+  previousContent: z.string().optional(),
+  beforeContent: z.string().optional(),
+  afterContent: z.string().optional(),
+  beforeLabel: z.string().optional(),
+  afterLabel: z.string().optional(),
+  isCurrent: z.boolean().optional(),
+  hasDiff: z.boolean().optional(),
+  contentChanged: z.boolean().optional(),
+  summary: z.string().optional(),
+  additions: z.coerce.number().optional(),
+  deletions: z.coerce.number().optional(),
+  unifiedDiff: z.string().optional(),
+})
+
+export const reviewConversationMessageSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  actor: z.string(),
+  text: z.string(),
+  createdAt: z.string(),
+  roundNumber: z.coerce.number().optional(),
+  status: z.string().optional(),
+  scope: z.string().optional(),
+})
+
+export const sessionPrInfoSchema = z
+  .object({
+    status: z.string().optional(),
+    title: z.string().optional(),
+    sourceBranch: z.string().optional(),
+    targetBranch: z.string().optional(),
+    provider: z.string().optional(),
+    body: z.string().optional(),
+    externalUrl: z.string().nullable().optional(),
+    externalId: z.string().nullable().optional(),
+    codeReviewRequestId: z.string().optional(),
+  })
+  .nullable()
+
+export const sessionReviewSummarySchema = z.object({
+  currentPatchVersion: z.coerce.number().optional(),
+  currentPatchVersionId: z.string().optional(),
+  latestExecutionStatus: z.string().optional(),
+  validationSummary: z.string().optional(),
+  changedFilesCount: z.coerce.number().optional(),
+  reviewState: z.string().optional(),
+  workflowStatus: z.string().optional(),
+  nextActions: z.array(z.string()).optional(),
+  currentPatchCreatedAt: z.string().optional(),
+})
+
+export const sessionReviewDataSchema = z.object({
+  sessionId: z.string(),
+  reviewSummary: sessionReviewSummarySchema,
+  changedFiles: z.array(reviewChangedFileSchema).default([]),
+  reviewConversation: z.array(reviewConversationMessageSchema).default([]),
+  prInfo: sessionPrInfoSchema,
+})
+
 export type SessionStatus = z.infer<typeof sessionStatusSchema>
 export type RepoConnection = z.infer<typeof repoConnectionSchema>
 export type PatchFileChange = z.infer<typeof patchFileChangeSchema>
@@ -372,3 +506,10 @@ export type SessionCreateInput = z.infer<typeof sessionCreateInputSchema>
 /** Local / RHF: branch & session forms (pre-transform where applicable). */
 export type BranchPolicyFormValues = z.input<typeof branchPolicyInputSchema>
 export type SessionCreateFormValues = z.input<typeof sessionCreateInputSchema>
+export type SessionBrief = z.infer<typeof sessionBriefSchema>
+export type SessionReviewData = z.infer<typeof sessionReviewDataSchema>
+export type ReviewChangedFile = z.infer<typeof reviewChangedFileSchema>
+export type ReviewConversationMessage = z.infer<
+  typeof reviewConversationMessageSchema
+>
+export type SessionPrInfo = z.infer<typeof sessionPrInfoSchema>

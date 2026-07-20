@@ -7,5 +7,7 @@ export const qk = {
   sessions: (filters?: Record<string, string | undefined>) =>
     ['sessions', filters ?? {}] as const,
   session: (id: string) => ['sessions', id] as const,
+  sessionBrief: (id: string) => ['sessions', id, 'brief'] as const,
+  sessionReviewData: (id: string) => ['sessions', id, 'review-data'] as const,
   settings: ['settings'] as const,
 }
