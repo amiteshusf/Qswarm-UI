@@ -92,7 +92,7 @@ export function AppShell() {
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
               'mx-auto w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8',
-              isSessionDetail ? 'max-w-7xl' : 'max-w-6xl',
+              isSessionDetail ? 'max-w-[90rem]' : 'max-w-6xl',
             )}
           >
             <Outlet />

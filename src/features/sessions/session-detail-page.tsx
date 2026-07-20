@@ -34,9 +34,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs'
 import { ActionRail } from '@/features/sessions/review/action-rail'
-import { ChangedFilesPanel } from '@/features/sessions/review/changed-files-panel'
 import { CodeRevisionSwitcher } from '@/features/sessions/review/code-revision-switcher'
-import { FileDiffPanel } from '@/features/sessions/review/file-diff-panel'
+import { ReviewChangesWorkspace } from '@/features/sessions/review/review-changes-workspace'
 import { ReviewAdvancedPanel } from '@/features/sessions/review/review-advanced-panel'
 import { ReviewConversationPanel } from '@/features/sessions/review/review-conversation-panel'
 import {
@@ -242,8 +241,8 @@ export function SessionDetailPage() {
       {q.isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-36 w-full rounded-2xl" />
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Skeleton className="h-96 rounded-2xl lg:col-span-2" />
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <Skeleton className="h-96 rounded-2xl" />
             <Skeleton className="h-64 rounded-2xl" />
           </div>
         </div>
@@ -303,8 +302,8 @@ export function SessionDetailPage() {
             isLoading={briefQ.isLoading}
           />
 
-          <div className="grid gap-6 xl:grid-cols-12">
-            <div className="space-y-6 xl:col-span-8">
+          <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1 space-y-6">
               <Tabs defaultValue="changes" className="w-full">
                 <TabsList className="bg-muted/40 h-auto w-full justify-start gap-1 rounded-xl p-1">
                   <TabsTrigger value="changes" className="rounded-lg text-xs">
@@ -319,7 +318,7 @@ export function SessionDetailPage() {
                 </TabsList>
 
                 <TabsContent value="changes" className="mt-4 space-y-4">
-                  <div className="border-border/70 bg-surface rounded-2xl border p-4 shadow-sm sm:p-5">
+                  <div className="border-border/70 bg-surface min-w-0 rounded-2xl border p-4 shadow-sm sm:p-5">
                     <div className="mb-4 flex items-start gap-2">
                       <FileDiff className="text-swarm mt-0.5 size-5 shrink-0" />
                       <div>
@@ -355,18 +354,12 @@ export function SessionDetailPage() {
                     {reviewQ.isLoading && !changedFiles.length ? (
                       <Skeleton className="h-64 w-full rounded-xl" />
                     ) : (
-                      <div className="mt-4 grid gap-4 lg:grid-cols-5">
-                        <div className="lg:col-span-2">
-                          <ChangedFilesPanel
-                            files={changedFiles}
-                            selectedPath={selectedFile?.path ?? null}
-                            onSelect={setSelectedFilePath}
-                          />
-                        </div>
-                        <div className="lg:col-span-3">
-                          <FileDiffPanel file={selectedFile} />
-                        </div>
-                      </div>
+                      <ReviewChangesWorkspace
+                        className="mt-4"
+                        files={changedFiles}
+                        selectedFile={selectedFile}
+                        onSelectFile={setSelectedFilePath}
+                      />
                     )}
                   </div>
                 </TabsContent>
@@ -401,7 +394,7 @@ export function SessionDetailPage() {
               </div>
             </div>
 
-            <div className="xl:col-span-4">
+            <div className="w-full shrink-0 lg:sticky lg:top-20 lg:w-72 lg:max-w-[30%]">
               <ActionRail
                 session={actionSession}
                 repoName={repoName}

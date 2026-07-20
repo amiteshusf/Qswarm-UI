@@ -57,7 +57,7 @@ export function ActionRail({
   return (
     <aside
       className={cn(
-        'border-border/70 bg-surface-raised space-y-4 rounded-2xl border p-5 shadow-sm lg:sticky lg:top-20',
+        'border-border/70 bg-surface-raised space-y-4 rounded-2xl border p-5 shadow-sm',
         className,
       )}
     >
