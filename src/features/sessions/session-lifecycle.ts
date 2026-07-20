@@ -18,17 +18,27 @@ export type SessionContext = {
   prExternalUrl?: string | null
 }
 
+export function isApprovedForPrWorkflow(workflowStatus?: string): boolean {
+  const wf = workflowStatus?.toLowerCase().trim() ?? ''
+  return wf === 'approved_for_pr'
+}
+
+export function isPrCreationFailedWorkflow(workflowStatus?: string): boolean {
+  const wf = workflowStatus?.toLowerCase().trim() ?? ''
+  return wf === 'pr_creation_failed'
+}
+
 export function getSessionStage(session: SessionContext): SessionStage {
   if (session.prExternalUrl) return 'published'
 
-  const wf = session.workflowStatus?.toLowerCase() ?? ''
-
   if (session.status === 'failed') return 'failed'
   if (session.status === 'cancelled') return 'cancelled'
-  if (wf === 'approved_for_pr' || wf.includes('approved_for_pr')) {
+  if (isApprovedForPrWorkflow(session.workflowStatus)) {
     return 'ready_to_publish'
   }
-  if (wf === 'pr_creation_failed') return 'ready_to_publish'
+  if (isPrCreationFailedWorkflow(session.workflowStatus)) {
+    return 'ready_to_publish'
+  }
 
   switch (session.status) {
     case 'draft':
@@ -42,7 +52,9 @@ export function getSessionStage(session: SessionContext): SessionStage {
     case 'awaiting_review':
       return 'ready_for_review'
     case 'succeeded':
-      return wf.includes('approved') ? 'ready_to_publish' : 'published'
+      return isApprovedForPrWorkflow(session.workflowStatus)
+        ? 'ready_to_publish'
+        : 'published'
     default:
       return 'draft'
   }

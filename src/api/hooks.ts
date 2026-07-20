@@ -91,6 +91,7 @@ export function useSession(id: string | undefined) {
     queryKey: qk.session(id ?? ''),
     queryFn: () => api.getSession(id!),
     enabled: Boolean(id),
+    refetchOnMount: 'always',
   })
 }
 
@@ -100,6 +101,7 @@ export function useSessionBrief(id: string | undefined) {
     queryFn: () => api.getSessionBrief(id!),
     enabled: Boolean(id),
     staleTime: 30_000,
+    refetchOnMount: 'always',
   })
 }
 
@@ -109,6 +111,7 @@ export function useSessionReviewData(id: string | undefined) {
     queryFn: () => api.getSessionReviewData(id!),
     enabled: Boolean(id),
     staleTime: 15_000,
+    refetchOnMount: 'always',
   })
 }
 

@@ -1,5 +1,22 @@
 import { z } from 'zod'
 
+import type { SessionMutationAction } from '@/features/sessions/session-actions'
+
+export type FormatErrorOptions = {
+  action?: SessionMutationAction
+}
+
+const INVALID_STATE_MESSAGES: Record<SessionMutationAction, string> = {
+  start:
+    'This run cannot be started in its current state. Refresh the page and confirm setup is complete.',
+  revise:
+    'Change requests are only available while the run is awaiting your review.',
+  approve:
+    'Approval is only available when the run is ready for your review.',
+  create_pr:
+    'Creating a pull request requires an approved run. Complete review and approval first.',
+}
+
 /** Extract a human-readable message from common JSON error bodies. */
 export function extractBackendMessage(body: unknown): string | undefined {
   if (body == null) return undefined
@@ -129,7 +146,10 @@ export class ApiError extends Error {
   }
 }
 
-export function formatErrorForToast(error: unknown): string {
+export function formatErrorForToast(
+  error: unknown,
+  options?: FormatErrorOptions,
+): string {
   if (error instanceof ConfigurationError) return error.message
   if (error instanceof NetworkApiError) return error.message
   if (error instanceof SchemaResponseError) return error.message
@@ -140,7 +160,10 @@ export function formatErrorForToast(error: unknown): string {
     }
     if (code === 'invalid_state') {
       if (error.status === 409) {
-        return 'This action is not allowed in the current session state. Complete the prior step (e.g. approve before creating a PR).'
+        if (options?.action) {
+          return INVALID_STATE_MESSAGES[options.action]
+        }
+        return 'This action is not allowed in the current session state. Refresh the page and try the suggested next step.'
       }
     }
     if (code) return `${code}: ${error.summary}`

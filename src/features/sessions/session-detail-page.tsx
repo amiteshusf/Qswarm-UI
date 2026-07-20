@@ -15,6 +15,7 @@ import {
   useSessionReviewData,
   useStartSession,
 } from '@/api/hooks'
+import type { SessionDetail } from '@/api/schemas'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +49,33 @@ import { RevisionComposer } from '@/features/sessions/review/revision-composer'
 import { RunHeroSummary } from '@/features/sessions/review/run-hero-summary'
 import { SessionBriefPanel } from '@/features/sessions/review/session-brief-panel'
 import { ValidationSummaryPanel } from '@/features/sessions/review/validation-summary-panel'
+import {
+  isSessionActionAllowed,
+  type SessionMutationAction,
+} from '@/features/sessions/session-actions'
+
+function actionBlockedToast(action: SessionMutationAction) {
+  const labels: Record<SessionMutationAction, string> = {
+    start: 'Start automation',
+    revise: 'Request changes',
+    approve: 'Approve output',
+    create_pr: 'Publish pull request',
+  }
+  toast.error(
+    `“${labels[action]}” is not available for this run right now. Refresh and try again.`,
+  )
+}
+
+function guardSessionMutation(
+  session: SessionDetail,
+  action: SessionMutationAction,
+): boolean {
+  if (!isSessionActionAllowed(session, action)) {
+    actionBlockedToast(action)
+    return false
+  }
+  return true
+}
 
 export function SessionDetailPage() {
   const { id = '' } = useParams()
@@ -67,16 +95,35 @@ export function SessionDetailPage() {
   const [patchVersion, setPatchVersion] = useState(1)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
 
-  const session = useMemo(
+  const actionSession =
+    q.data && q.data.id === id ? q.data : undefined
+
+  const reviewDataForSession =
+    reviewQ.data && reviewQ.data.sessionId === id ? reviewQ.data : null
+
+  const displaySession = useMemo(
     () =>
-      q.data ? mergeSessionWithReviewData(q.data, reviewQ.data) : undefined,
-    [q.data, reviewQ.data],
+      actionSession
+        ? mergeSessionWithReviewData(actionSession, reviewDataForSession)
+        : undefined,
+    [actionSession, reviewDataForSession],
   )
 
   useEffect(() => {
+    setPrOpen(false)
+    setInstruction('')
+    setScope('')
+    setSelectedFilePath(null)
+  }, [id])
+
+  useEffect(() => {
     if (!q.data) return
-    setPatchVersion(defaultPatchVersion(q.data.patches, reviewQ.data))
-  }, [q.data?.id, q.data?.patches.length, reviewQ.data?.reviewSummary.currentPatchVersion])
+    setPatchVersion(defaultPatchVersion(q.data.patches, reviewDataForSession))
+  }, [
+    q.data?.id,
+    q.data?.patches.length,
+    reviewDataForSession?.reviewSummary.currentPatchVersion,
+  ])
 
   const repoName =
     briefQ.data?.setup.repository?.displayName ??
@@ -86,30 +133,30 @@ export function SessionDetailPage() {
     'Repository'
 
   const longRunning = start.isPending || revision.isPending
-  const repoId = session?.repoConnectionId?.trim() ?? ''
+  const repoId = actionSession?.repoConnectionId?.trim() ?? ''
 
-  const patches = session?.patches ?? []
+  const patches = displaySession?.patches ?? []
   const effectiveVersion = useMemo(() => {
     if (patches.length === 0) {
-      return reviewQ.data?.reviewSummary.currentPatchVersion ?? 1
+      return reviewDataForSession?.reviewSummary.currentPatchVersion ?? 1
     }
     if (patches.some((p) => p.version === patchVersion)) return patchVersion
-    return defaultPatchVersion(patches, reviewQ.data)
-  }, [patches, patchVersion, reviewQ.data])
+    return defaultPatchVersion(patches, reviewDataForSession)
+  }, [patches, patchVersion, reviewDataForSession])
 
-  const selectedPatch = session
+  const selectedPatch = displaySession
     ? getSelectedPatch(patches, effectiveVersion)
     : undefined
 
   const changedFiles = useMemo(() => {
-    if (!session) return []
+    if (!displaySession) return []
     return resolveChangedFiles({
-      reviewData: reviewQ.data,
-      session,
+      reviewData: reviewDataForSession,
+      session: displaySession,
       selectedPatch,
       selectedPatchVersion: effectiveVersion,
     })
-  }, [session, reviewQ.data, selectedPatch, effectiveVersion])
+  }, [displaySession, reviewDataForSession, selectedPatch, effectiveVersion])
 
   const selectedFile = useMemo(
     () =>
@@ -120,34 +167,38 @@ export function SessionDetailPage() {
   )
 
   const changeSummary =
-    session?.patchSummary ??
-    (reviewQ.data?.reviewSummary.changedFilesCount
-      ? `${reviewQ.data.reviewSummary.changedFilesCount} file(s) in code revision ${reviewQ.data.reviewSummary.currentPatchVersion ?? 1}`
+    displaySession?.patchSummary ??
+    (reviewDataForSession?.reviewSummary.changedFilesCount
+      ? `${reviewDataForSession.reviewSummary.changedFilesCount} file(s) in code revision ${reviewDataForSession.reviewSummary.currentPatchVersion ?? 1}`
       : undefined)
 
-  const prUrl = session?.prExternalUrl ?? reviewQ.data?.prInfo?.externalUrl
+  const prUrl =
+    actionSession?.prExternalUrl ?? reviewDataForSession?.prInfo?.externalUrl
 
   async function submitRevision() {
+    if (!actionSession || !guardSessionMutation(actionSession, 'revise')) return
     try {
       await revision.mutateAsync({ instruction, scope: scope || undefined })
       toast.success('Change request sent to agent')
       setInstruction('')
       setScope('')
     } catch (e) {
-      toast.error(formatErrorForToast(e))
+      toast.error(formatErrorForToast(e, { action: 'revise' }))
     }
   }
 
   async function submitApprove() {
+    if (!actionSession || !guardSessionMutation(actionSession, 'approve')) return
     try {
       await approve.mutateAsync()
       toast.success('Output approved')
     } catch (e) {
-      toast.error(formatErrorForToast(e))
+      toast.error(formatErrorForToast(e, { action: 'approve' }))
     }
   }
 
   async function submitPr() {
+    if (!actionSession || !guardSessionMutation(actionSession, 'create_pr')) return
     if (!repoId) {
       toast.error('No repository linked to this run.')
       return
@@ -160,7 +211,19 @@ export function SessionDetailPage() {
       )
       setPrOpen(false)
     } catch (e) {
-      toast.error(formatErrorForToast(e))
+      toast.error(formatErrorForToast(e, { action: 'create_pr' }))
+    }
+  }
+
+  async function submitStart() {
+    if (!actionSession || !guardSessionMutation(actionSession, 'start')) return
+    try {
+      await start.mutateAsync(
+        repoId ? { repositoryConnectionId: repoId } : undefined,
+      )
+      toast.success('Automation started')
+    } catch (e) {
+      toast.error(formatErrorForToast(e, { action: 'start' }))
     }
   }
 
@@ -186,7 +249,7 @@ export function SessionDetailPage() {
         </div>
       ) : null}
 
-      {session ? (
+      {displaySession && actionSession ? (
         <>
           {longRunning ? (
             <div
@@ -213,10 +276,11 @@ export function SessionDetailPage() {
                 <p className="text-sm font-medium">Pull request created</p>
                 <p className="text-muted-foreground text-xs">
                   {reviewQ.data?.prInfo?.title ??
-                    session.prPreviewTitle ??
+                    displaySession.prPreviewTitle ??
                     'Published'}
-                  {session.prExternalId || reviewQ.data?.prInfo?.externalId
-                    ? ` · #${session.prExternalId ?? reviewQ.data?.prInfo?.externalId}`
+                  {actionSession.prExternalId ||
+                  reviewDataForSession?.prInfo?.externalId
+                    ? ` · #${actionSession.prExternalId ?? reviewDataForSession?.prInfo?.externalId}`
                     : ''}
                 </p>
               </div>
@@ -231,11 +295,11 @@ export function SessionDetailPage() {
             </div>
           ) : null}
 
-          <RunHeroSummary session={session} repoName={repoName} />
+          <RunHeroSummary session={actionSession} repoName={repoName} />
 
           <SessionBriefPanel
             brief={briefQ.data}
-            session={session}
+            session={actionSession}
             isLoading={briefQ.isLoading}
           />
 
@@ -313,20 +377,20 @@ export function SessionDetailPage() {
                       Validation result
                     </h2>
                     <ValidationSummaryPanel
-                      session={session}
-                      reviewData={reviewQ.data}
+                      session={displaySession}
+                      reviewData={reviewDataForSession}
                     />
                   </div>
                 </TabsContent>
               </Tabs>
 
               <ReviewConversationPanel
-                session={session}
-                reviewData={reviewQ.data}
+                session={displaySession}
+                reviewData={reviewDataForSession}
               />
               <div ref={composerRef} className="mt-4">
                 <RevisionComposer
-                  session={session}
+                  session={actionSession}
                   instruction={instruction}
                   scope={scope}
                   pending={revision.isPending}
@@ -339,22 +403,18 @@ export function SessionDetailPage() {
 
             <div className="xl:col-span-4">
               <ActionRail
-                session={session}
+                session={actionSession}
                 repoName={repoName}
                 repoId={repoId}
                 startPending={start.isPending}
                 approvePending={approve.isPending}
                 createPrPending={createPr.isPending}
-                onStart={() =>
-                  void start
-                    .mutateAsync(
-                      repoId ? { repositoryConnectionId: repoId } : undefined,
-                    )
-                    .then(() => toast.success('Automation started'))
-                    .catch((e) => toast.error(formatErrorForToast(e)))
-                }
+                onStart={() => void submitStart()}
                 onApprove={() => void submitApprove()}
-                onCreatePr={() => setPrOpen(true)}
+                onCreatePr={() => {
+                  if (!guardSessionMutation(actionSession, 'create_pr')) return
+                  setPrOpen(true)
+                }}
               />
 
               <div className="border-border/60 bg-muted/10 text-muted-foreground mt-4 rounded-xl border px-4 py-3 text-xs">
@@ -366,13 +426,13 @@ export function SessionDetailPage() {
                   </li>
                   <li>
                     <span className="text-foreground">Validation:</span>{' '}
-                    {session.latestExecutionSummary?.slice(0, 120) ??
-                      reviewQ.data?.reviewSummary.latestExecutionStatus ??
+                    {displaySession.latestExecutionSummary?.slice(0, 120) ??
+                      reviewDataForSession?.reviewSummary.latestExecutionStatus ??
                       '—'}
                   </li>
                   <li>
                     <span className="text-foreground">Updated:</span>{' '}
-                    {formatDistanceToNow(new Date(session.updatedAt), {
+                    {formatDistanceToNow(new Date(actionSession.updatedAt), {
                       addSuffix: true,
                     })}
                   </li>
@@ -386,7 +446,7 @@ export function SessionDetailPage() {
               Advanced — history, metadata & raw data
             </summary>
             <div className="mt-4">
-              <ReviewAdvancedPanel session={session} repoName={repoName} />
+              <ReviewAdvancedPanel session={displaySession} repoName={repoName} />
             </div>
           </details>
         </>
@@ -404,8 +464,8 @@ export function SessionDetailPage() {
             <div>
               <p className="text-muted-foreground text-xs uppercase">Title</p>
               <p className="font-medium">
-                {reviewQ.data?.prInfo?.title ??
-                  session?.prPreviewTitle ??
+                {reviewDataForSession?.prInfo?.title ??
+                  displaySession?.prPreviewTitle ??
                   'Generated server-side.'}
               </p>
             </div>
@@ -414,8 +474,8 @@ export function SessionDetailPage() {
                 Description
               </p>
               <div className="bg-muted/30 border-border/60 mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border p-3 text-sm">
-                {reviewQ.data?.prInfo?.body ??
-                  session?.prPreviewBody ??
+                {reviewDataForSession?.prInfo?.body ??
+                  displaySession?.prPreviewBody ??
                   'From branch policy + run metadata.'}
               </div>
             </div>

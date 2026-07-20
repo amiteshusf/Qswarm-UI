@@ -148,6 +148,9 @@ export function mergeSessionWithReviewData(
   reviewData?: SessionReviewData | null,
 ): SessionDetail {
   if (!reviewData) return session
+  if (reviewData.sessionId && reviewData.sessionId !== session.id) {
+    return session
+  }
   const pr = reviewData.prInfo
   const summary = reviewData.reviewSummary
   return {

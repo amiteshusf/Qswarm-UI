@@ -7,7 +7,10 @@ import {
 } from 'lucide-react'
 
 import type { SessionDetail } from '@/api/schemas'
-import { sessionActionHints } from '@/features/sessions/session-actions'
+import {
+  primaryActionLabel,
+  sessionActionHints,
+} from '@/features/sessions/session-actions'
 import {
   getNextStepHeading,
   getNextStepMessage,
@@ -44,12 +47,12 @@ export function ActionRail({
   const hints = sessionActionHints(session)
   const heading = getNextStepHeading(session)
   const message = getNextStepMessage(session)
+  const primary = hints.primaryAction
 
-  const showActions =
-    hints.canStart ||
-    hints.canApprove ||
-    hints.canCreatePr ||
-    hints.canOpenPr
+  const primaryPending =
+    (primary === 'start_automation' && startPending) ||
+    (primary === 'approve' && approvePending) ||
+    (primary === 'create_pr' && createPrPending)
 
   return (
     <aside
@@ -70,50 +73,50 @@ export function ActionRail({
         </p>
       </div>
 
-      {showActions ? (
+      {primary ? (
         <div className="flex flex-col gap-2">
-          {hints.canStart ? (
+          {primary === 'start_automation' ? (
             <Button
               className="bg-swarm text-swarm-foreground hover:bg-swarm/90 w-full gap-2"
               disabled={startPending}
               onClick={onStart}
             >
-              {startPending ? (
+              {primaryPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <Play className="size-4" />
               )}
-              Start automation
+              {primaryActionLabel(primary)}
             </Button>
           ) : null}
 
-          {hints.canApprove ? (
+          {primary === 'approve' ? (
             <Button
               className="bg-swarm text-swarm-foreground hover:bg-swarm/90 w-full gap-2"
               disabled={approvePending}
               onClick={onApprove}
             >
-              {approvePending ? (
+              {primaryPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <ShieldCheck className="size-4" />
               )}
-              Approve output
+              {primaryActionLabel(primary)}
             </Button>
           ) : null}
 
-          {hints.canCreatePr ? (
+          {primary === 'create_pr' ? (
             <Button
               className="bg-swarm text-swarm-foreground hover:bg-swarm/90 w-full gap-2"
               disabled={createPrPending || !repoId}
               onClick={onCreatePr}
             >
               <GitPullRequest className="size-4" />
-              Publish pull request
+              {primaryActionLabel(primary)}
             </Button>
           ) : null}
 
-          {hints.canOpenPr && session.prExternalUrl ? (
+          {primary === 'open_pr' && session.prExternalUrl ? (
             <a
               href={session.prExternalUrl}
               target="_blank"
@@ -121,7 +124,7 @@ export function ActionRail({
               className="bg-swarm text-swarm-foreground hover:bg-swarm/90 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium"
             >
               <ExternalLink className="size-4" />
-              Open pull request
+              {primaryActionLabel(primary)}
             </a>
           ) : null}
         </div>
