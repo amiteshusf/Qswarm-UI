@@ -133,6 +133,42 @@ export function useCreateSession() {
   })
 }
 
+export function usePreparePlan(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.preparePlan(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
+      void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
+    },
+  })
+}
+
+export function useApprovePlan(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.approvePlan(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
+      void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
+    },
+  })
+}
+
+export function useRequestPlanRevision(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: unknown) => api.requestPlanRevision(id, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
+      void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, id)
+    },
+  })
+}
+
 export function useStartSession(id: string) {
   const qc = useQueryClient()
   return useMutation({

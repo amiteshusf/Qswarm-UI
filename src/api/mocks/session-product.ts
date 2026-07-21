@@ -1,11 +1,33 @@
 import type { SessionBrief, SessionDetail, SessionReviewData } from '@/api/schemas'
 
+const mockPlanApproved = new Map<string, boolean>()
+
+export function setMockPlanApproved(sessionId: string, approved: boolean) {
+  mockPlanApproved.set(sessionId, approved)
+}
+
 export function buildMockSessionBrief(
   session: SessionDetail,
   repoDisplayName = 'Payments API',
 ): SessionBrief {
+  const isDraft = session.status === 'draft'
+  const isPlanReady = session.status === 'plan_ready'
   const isPreRun =
-    session.status === 'draft' || session.status === 'queued'
+    isDraft || session.status === 'queued' || isPlanReady
+  const planApproved = mockPlanApproved.get(session.id) ?? false
+
+  let nextActions: string[]
+  if (isDraft) {
+    nextActions = ['prepare_plan', 'start_automation']
+  } else if (isPlanReady && !planApproved) {
+    nextActions = ['approve_plan', 'request_plan_revision']
+  } else if (isPlanReady && planApproved) {
+    nextActions = ['start_automation']
+  } else if (session.status === 'awaiting_review') {
+    nextActions = ['request_changes', 'approve']
+  } else {
+    nextActions = ['view_summary']
+  }
 
   return {
     sessionId: session.id,
@@ -13,7 +35,8 @@ export function buildMockSessionBrief(
       status: session.status,
       workflowStatus: session.workflowStatus,
       currentRoundNumber: session.currentRoundNumber ?? 0,
-      nextActions: isPreRun ? ['start_automation'] : ['view_summary'],
+      planApproved: isPlanReady ? planApproved : undefined,
+      nextActions,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
     },
@@ -23,8 +46,8 @@ export function buildMockSessionBrief(
       caseId: session.sourceLabel ?? session.sourceRef,
       sourceTitle: session.sourceLabel ?? session.sourceRef,
       objective: `Automate and verify: ${session.sourceLabel ?? session.sourceRef}`,
-      missingInformation: isPreRun
-        ? ['Full test steps will be inferred at start']
+      missingInformation: isDraft
+        ? ['Full test steps will be inferred when the plan is prepared']
         : undefined,
     },
     setup: {
@@ -47,27 +70,32 @@ export function buildMockSessionBrief(
             branchPattern: 'qswarm/{session}',
           }
         : undefined,
-      workspaceConfigured: !isPreRun,
+      workspaceConfigured: isPlanReady || !isPreRun,
     },
-    automationBrief: isPreRun
+    automationBrief: isDraft
       ? {
           available: false,
           summary:
-            'Automation plan will be generated when you start this run.',
+            'Prepare a plan to see what QSwarm will automate before you run.',
         }
-      : {
-          available: true,
-          planVersion: 2,
-          frameworkType: 'playwright',
-          targetTestFile: 'tests/e2e/checkout/refund.spec.ts',
-          filesToModify: [
-            'tests/e2e/checkout/refund.spec.ts',
-            'tests/e2e/pages/checkout.page.ts',
-          ],
-          actionOnTargetTestFile: 'modify',
-          summary:
-            'QSwarm will harden refund validation and reuse the checkout page object.',
-        },
+      : isPlanReady || !isPreRun
+        ? {
+            available: true,
+            planVersion: 2,
+            frameworkType: 'playwright',
+            targetTestFile: 'tests/e2e/checkout/refund.spec.ts',
+            filesToModify: [
+              'tests/e2e/checkout/refund.spec.ts',
+              'tests/e2e/pages/checkout.page.ts',
+            ],
+            actionOnTargetTestFile: 'modify',
+            summary:
+              'QSwarm will harden refund validation and reuse the checkout page object.',
+          }
+        : {
+            available: false,
+            summary: 'Automation plan will be generated when you prepare a plan.',
+          },
   }
 }
 

@@ -4,6 +4,8 @@ import type { SessionStatus } from '@/api/schemas'
 export type SessionStage =
   | 'draft'
   | 'queued'
+  | 'plan_review'
+  | 'plan_approved'
   | 'running'
   | 'revising'
   | 'ready_for_review'
@@ -16,6 +18,8 @@ export type SessionContext = {
   status: SessionStatus
   workflowStatus?: string
   prExternalUrl?: string | null
+  planApproved?: boolean
+  nextActions?: string[]
 }
 
 export function isApprovedForPrWorkflow(workflowStatus?: string): boolean {
@@ -43,6 +47,8 @@ export function getSessionStage(session: SessionContext): SessionStage {
   switch (session.status) {
     case 'draft':
       return 'draft'
+    case 'plan_ready':
+      return session.planApproved ? 'plan_approved' : 'plan_review'
     case 'queued':
       return 'queued'
     case 'running':
@@ -63,6 +69,8 @@ export function getSessionStage(session: SessionContext): SessionStage {
 const STAGE_LABELS: Record<SessionStage, string> = {
   draft: 'Not started',
   queued: 'Queued',
+  plan_review: 'Review plan',
+  plan_approved: 'Plan approved',
   running: 'Automation in progress',
   revising: 'Applying your feedback',
   ready_for_review: 'Ready for review',
@@ -78,14 +86,18 @@ export function getFriendlyStatusLabel(session: SessionContext): string {
 
 const STAGE_SUMMARIES: Record<SessionStage, string> = {
   draft:
-    'This automation run is set up but has not started. Start when you are ready for the agent to work.',
+    'This automation run is set up. Prepare a plan to see what QSwarm will do before running.',
   queued: 'Your run is queued and will begin shortly.',
+  plan_review:
+    'QSwarm prepared an automation plan. Review it and approve, or request changes before running.',
+  plan_approved:
+    'The plan is approved. Run automation when you are ready for the agent to work.',
   running:
     'The agent is generating code and running validation. This can take several minutes — no action needed.',
   revising:
     'The agent is applying feedback from a previous review. You will be notified when it is ready.',
   ready_for_review:
-    'Automation finished. Review what changed and either approve or request changes.',
+    'Automation finished. Review what changed and either approve the output or request changes.',
   ready_to_publish:
     'Output is approved. Publish a pull request when you are ready to ship.',
   published:
@@ -102,6 +114,8 @@ export function getHeroSummary(session: SessionContext): string {
 const NEXT_STEP_HEADINGS: Record<SessionStage, string> = {
   draft: 'Next step',
   queued: 'What happens next',
+  plan_review: 'Review the plan',
+  plan_approved: 'Ready to run',
   running: 'Sit tight',
   revising: 'Sit tight',
   ready_for_review: 'Your decision',
@@ -116,12 +130,15 @@ export function getNextStepHeading(session: SessionContext): string {
 }
 
 const NEXT_STEP_MESSAGES: Record<SessionStage, string> = {
-  draft: 'Start automation to clone the repo, generate changes, and run validation.',
+  draft: 'Prepare a plan to see what QSwarm will automate before you run.',
   queued: 'The runner will pick up this job automatically.',
+  plan_review:
+    'Approve the plan if it looks right, or request plan changes with clear instructions.',
+  plan_approved: 'Run automation to clone the repo, generate changes, and run validation.',
   running: 'Keep this tab open. The page updates when the agent completes this step.',
   revising: 'The agent is working on your feedback. Approval actions return when review is ready.',
   ready_for_review:
-    'Approve if the output looks good, or request changes with clear instructions.',
+    'Approve the output if it looks good, or request changes with clear instructions.',
   ready_to_publish: 'Create a pull request to publish the approved changes to your repository.',
   published: 'Review and merge the pull request in your Git workflow.',
   failed: 'Review the validation result and supporting details. You may need to start a new run.',
@@ -153,8 +170,9 @@ export function friendlyValidationLabel(roundNumber: number): string {
 
 export const FRIENDLY_WORKFLOW_STEPS = [
   { id: 'setup', label: 'Set up' },
+  { id: 'plan', label: 'Review plan' },
   { id: 'run', label: 'Run' },
-  { id: 'review', label: 'Review' },
+  { id: 'review', label: 'Review output' },
   { id: 'approve', label: 'Approve' },
   { id: 'publish', label: 'Publish' },
 ] as const
@@ -163,25 +181,51 @@ export function friendlyWorkflowStepIndex(
   status: SessionStatus,
   workflowStatus?: string,
   prExternalUrl?: string | null,
+  planApproved?: boolean,
 ): number {
-  const stage = getSessionStage({ status, workflowStatus, prExternalUrl })
+  const stage = getSessionStage({ status, workflowStatus, prExternalUrl, planApproved })
   switch (stage) {
     case 'draft':
     case 'queued':
-      return stage === 'queued' ? 1 : 0
+      return 0
+    case 'plan_review':
+    case 'plan_approved':
+      return 1
     case 'running':
     case 'revising':
-      return 1
+      return 2
     case 'ready_for_review':
     case 'failed':
-      return 2
-    case 'ready_to_publish':
       return 3
-    case 'published':
+    case 'ready_to_publish':
       return 4
+    case 'published':
+      return 5
     case 'cancelled':
-      return 2
+      return 3
     default:
       return 0
   }
+}
+
+export function isPlanPhase(session: SessionContext): boolean {
+  const stage = getSessionStage(session)
+  return (
+    stage === 'draft' ||
+    stage === 'queued' ||
+    stage === 'plan_review' ||
+    stage === 'plan_approved'
+  )
+}
+
+export function isOutputReviewPhase(session: SessionContext): boolean {
+  const stage = getSessionStage(session)
+  return (
+    stage === 'running' ||
+    stage === 'revising' ||
+    stage === 'ready_for_review' ||
+    stage === 'ready_to_publish' ||
+    stage === 'published' ||
+    stage === 'failed'
+  )
 }

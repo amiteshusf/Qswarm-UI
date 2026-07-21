@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 const SESSION_STATUS_VALUES = [
   'draft',
+  'plan_ready',
   'queued',
   'running',
   'awaiting_review',
@@ -18,6 +19,7 @@ function coerceSessionStatus(raw: unknown): (typeof SESSION_STATUS_VALUES)[numbe
   if ((SESSION_STATUS_VALUES as readonly string[]).includes(s))
     return s as (typeof SESSION_STATUS_VALUES)[number]
   if (s === 'pending') return 'draft'
+  if (s === 'plan_ready') return 'plan_ready'
   if (
     s === 'planning' ||
     s === 'generating' ||
@@ -212,6 +214,7 @@ function normalizeSessionCountsRecord(
 ): Record<z.infer<typeof sessionStatusSchema>, number> {
   const base: Record<z.infer<typeof sessionStatusSchema>, number> = {
     draft: 0,
+    plan_ready: 0,
     queued: 0,
     running: 0,
     awaiting_review: 0,
@@ -363,6 +366,8 @@ export const sessionBriefStateSchema = z.object({
   workflowStatus: z.string().optional(),
   jobStatus: z.string().optional(),
   currentRoundNumber: z.coerce.number().optional(),
+  planApproved: z.boolean().optional(),
+  planApprovedAt: z.string().optional(),
   nextActions: z.array(z.string()).optional(),
   createdAt: z.string(),
   updatedAt: z.string(),

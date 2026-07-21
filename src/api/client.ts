@@ -23,6 +23,7 @@ import {
 import {
   buildMockSessionBrief,
   buildMockSessionReviewData,
+  setMockPlanApproved,
 } from '@/api/mocks/session-product'
 import {
   branchPolicyInputSchema,
@@ -500,6 +501,86 @@ export const api = {
       body: JSON.stringify(sessionCreateWireBody(body)),
     })
     return parseWithSchema(sessionDetailSchema, data, 'POST /sessions')
+  },
+
+  async preparePlan(id: string) {
+    if (useMockData) {
+      await delay(200)
+      setMockPlanApproved(id, false)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'plan_ready',
+        workflowStatus: 'plan_ready',
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'prepare-plan'), {
+      method: 'POST',
+      body: sessionMutationBody(),
+    })
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/prepare-plan`,
+    )
+  },
+
+  async approvePlan(id: string) {
+    if (useMockData) {
+      await delay(120)
+      setMockPlanApproved(id, true)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'plan_ready',
+        workflowStatus: 'plan_ready',
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(url('sessions', id, 'approve-plan'), {
+      method: 'POST',
+      body: sessionMutationBody(),
+    })
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/approve-plan`,
+    )
+  },
+
+  async requestPlanRevision(id: string, input: unknown) {
+    const body = revisionRequestSchema.parse(input)
+    if (useMockData) {
+      await delay(150)
+      setMockPlanApproved(id, false)
+      mockSessionsStore.detail = {
+        ...mockSessionsStore.detail,
+        id,
+        status: 'plan_ready',
+        workflowStatus: 'plan_ready',
+        updatedAt: new Date().toISOString(),
+      }
+      return sessionDetailSchema.parse(mockSessionsStore.detail)
+    }
+    const data = await fetchJson<unknown>(
+      url('sessions', id, 'request-plan-revision'),
+      {
+        method: 'POST',
+        body: sessionMutationBody({
+          instruction: body.instruction,
+          instructionText: body.instruction,
+          ...(body.scope ? { scope: body.scope, targetScope: body.scope } : {}),
+        }),
+      },
+    )
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /sessions/${id}/request-plan-revision`,
+    )
   },
 
   async startSession(

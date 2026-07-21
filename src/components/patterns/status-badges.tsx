@@ -14,6 +14,11 @@ const styles: Record<
     dot: 'bg-muted-foreground/50',
     className: 'border-border/60 bg-muted/50 text-muted-foreground',
   },
+  plan_ready: {
+    dot: 'bg-status-awaiting',
+    className:
+      'border-status-awaiting/30 bg-status-awaiting/12 text-[color:var(--status-awaiting)]',
+  },
   queued: {
     dot: 'bg-muted-foreground',
     className: 'border-border/60 bg-secondary/80 text-secondary-foreground',
@@ -53,6 +58,7 @@ export function SessionStatusBadge({
   status,
   workflowStatus,
   prExternalUrl,
+  planApproved,
   className,
   showDot = true,
   friendly = true,
@@ -60,14 +66,15 @@ export function SessionStatusBadge({
   status: SessionStatus
   workflowStatus?: string
   prExternalUrl?: string | null
+  planApproved?: boolean
   className?: string
   showDot?: boolean
   /** Use business-friendly labels (default). Set false for raw API status names. */
   friendly?: boolean
 }) {
-  const s = styles[status]
+  const s = styles[status] ?? styles.draft
   const label = friendly
-    ? getFriendlyStatusLabel({ status, workflowStatus, prExternalUrl })
+    ? getFriendlyStatusLabel({ status, workflowStatus, prExternalUrl, planApproved })
     : status.replace(/_/g, ' ')
 
   return (

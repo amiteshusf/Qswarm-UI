@@ -6,16 +6,19 @@ import { toast } from 'sonner'
 
 import { formatErrorForToast } from '@/api/errors'
 import {
+  useApprovePlan,
   useApproveSession,
   useCreatePr,
+  usePreparePlan,
   useRepoConnections,
+  useRequestPlanRevision,
   useRequestRevision,
   useSession,
   useSessionBrief,
   useSessionReviewData,
   useStartSession,
 } from '@/api/hooks'
-import type { SessionDetail } from '@/api/schemas'
+import type { SessionBrief, SessionDetail } from '@/api/schemas'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,18 +47,24 @@ import {
   mergeSessionWithReviewData,
   resolveChangedFiles,
 } from '@/features/sessions/review/review-data'
+import { PlanRevisionComposer } from '@/features/sessions/review/plan-revision-composer'
 import { RevisionComposer } from '@/features/sessions/review/revision-composer'
 import { RunHeroSummary } from '@/features/sessions/review/run-hero-summary'
 import { SessionBriefPanel } from '@/features/sessions/review/session-brief-panel'
 import { ValidationSummaryPanel } from '@/features/sessions/review/validation-summary-panel'
 import {
+  buildActionContext,
+  isPlanPhase,
   isSessionActionAllowed,
   type SessionMutationAction,
 } from '@/features/sessions/session-actions'
 
 function actionBlockedToast(action: SessionMutationAction) {
   const labels: Record<SessionMutationAction, string> = {
-    start: 'Start automation',
+    prepare_plan: 'Prepare plan',
+    approve_plan: 'Approve plan',
+    request_plan_revision: 'Request plan changes',
+    start: 'Run automation',
     revise: 'Request changes',
     approve: 'Approve output',
     create_pr: 'Publish pull request',
@@ -67,9 +76,11 @@ function actionBlockedToast(action: SessionMutationAction) {
 
 function guardSessionMutation(
   session: SessionDetail,
+  brief: SessionBrief | null | undefined,
   action: SessionMutationAction,
 ): boolean {
-  if (!isSessionActionAllowed(session, action)) {
+  const ctx = buildActionContext(session, brief)
+  if (!isSessionActionAllowed(ctx, action)) {
     actionBlockedToast(action)
     return false
   }
@@ -83,13 +94,18 @@ export function SessionDetailPage() {
   const reviewQ = useSessionReviewData(id)
   const repos = useRepoConnections()
   const start = useStartSession(id)
+  const preparePlan = usePreparePlan(id)
+  const approvePlan = useApprovePlan(id)
+  const planRevision = useRequestPlanRevision(id)
   const revision = useRequestRevision(id)
   const approve = useApproveSession(id)
   const createPr = useCreatePr(id)
 
   const composerRef = useRef<HTMLDivElement>(null)
+  const planComposerRef = useRef<HTMLDivElement>(null)
   const [prOpen, setPrOpen] = useState(false)
   const [instruction, setInstruction] = useState('')
+  const [planInstruction, setPlanInstruction] = useState('')
   const [scope, setScope] = useState('')
   const [patchVersion, setPatchVersion] = useState(1)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
@@ -99,6 +115,13 @@ export function SessionDetailPage() {
 
   const reviewDataForSession =
     reviewQ.data && reviewQ.data.sessionId === id ? reviewQ.data : null
+
+  const briefForSession =
+    briefQ.data && briefQ.data.sessionId === id ? briefQ.data : null
+
+  const actionCtx = actionSession
+    ? buildActionContext(actionSession, briefForSession)
+    : null
 
   const displaySession = useMemo(
     () =>
@@ -111,6 +134,7 @@ export function SessionDetailPage() {
   useEffect(() => {
     setPrOpen(false)
     setInstruction('')
+    setPlanInstruction('')
     setScope('')
     setSelectedFilePath(null)
   }, [id])
@@ -131,7 +155,13 @@ export function SessionDetailPage() {
     q.data?.repoConnectionId ??
     'Repository'
 
-  const longRunning = start.isPending || revision.isPending
+  const longRunning =
+    start.isPending ||
+    preparePlan.isPending ||
+    planRevision.isPending ||
+    revision.isPending
+  const planPhase = actionCtx ? isPlanPhase(actionCtx) : false
+  const outputPhase = !planPhase
   const repoId = actionSession?.repoConnectionId?.trim() ?? ''
 
   const patches = displaySession?.patches ?? []
@@ -175,7 +205,7 @@ export function SessionDetailPage() {
     actionSession?.prExternalUrl ?? reviewDataForSession?.prInfo?.externalUrl
 
   async function submitRevision() {
-    if (!actionSession || !guardSessionMutation(actionSession, 'revise')) return
+    if (!actionSession || !guardSessionMutation(actionSession, briefForSession, 'revise')) return
     try {
       await revision.mutateAsync({ instruction, scope: scope || undefined })
       toast.success('Change request sent to agent')
@@ -187,7 +217,7 @@ export function SessionDetailPage() {
   }
 
   async function submitApprove() {
-    if (!actionSession || !guardSessionMutation(actionSession, 'approve')) return
+    if (!actionSession || !guardSessionMutation(actionSession, briefForSession, 'approve')) return
     try {
       await approve.mutateAsync()
       toast.success('Output approved')
@@ -197,7 +227,7 @@ export function SessionDetailPage() {
   }
 
   async function submitPr() {
-    if (!actionSession || !guardSessionMutation(actionSession, 'create_pr')) return
+    if (!actionSession || !guardSessionMutation(actionSession, briefForSession, 'create_pr')) return
     if (!repoId) {
       toast.error('No repository linked to this run.')
       return
@@ -215,7 +245,7 @@ export function SessionDetailPage() {
   }
 
   async function submitStart() {
-    if (!actionSession || !guardSessionMutation(actionSession, 'start')) return
+    if (!actionSession || !guardSessionMutation(actionSession, briefForSession, 'start')) return
     try {
       await start.mutateAsync(
         repoId ? { repositoryConnectionId: repoId } : undefined,
@@ -223,6 +253,42 @@ export function SessionDetailPage() {
       toast.success('Automation started')
     } catch (e) {
       toast.error(formatErrorForToast(e, { action: 'start' }))
+    }
+  }
+
+  async function submitPreparePlan() {
+    if (!actionSession || !guardSessionMutation(actionSession, briefForSession, 'prepare_plan')) return
+    try {
+      await preparePlan.mutateAsync()
+      toast.success('Automation plan prepared')
+    } catch (e) {
+      toast.error(formatErrorForToast(e, { action: 'prepare_plan' }))
+    }
+  }
+
+  async function submitApprovePlan() {
+    if (!actionSession || !guardSessionMutation(actionSession, briefForSession, 'approve_plan')) return
+    try {
+      await approvePlan.mutateAsync()
+      toast.success('Plan approved — you can run automation when ready')
+    } catch (e) {
+      toast.error(formatErrorForToast(e, { action: 'approve_plan' }))
+    }
+  }
+
+  async function submitPlanRevision() {
+    if (
+      !actionSession ||
+      !guardSessionMutation(actionSession, briefForSession, 'request_plan_revision')
+    ) {
+      return
+    }
+    try {
+      await planRevision.mutateAsync({ instruction: planInstruction })
+      toast.success('Plan change request sent')
+      setPlanInstruction('')
+    } catch (e) {
+      toast.error(formatErrorForToast(e, { action: 'request_plan_revision' }))
     }
   }
 
@@ -258,9 +324,13 @@ export function SessionDetailPage() {
               <Loader2 className="text-swarm mt-0.5 size-4 shrink-0 animate-spin" />
               <div>
                 <p className="font-medium">
-                  {start.isPending
-                    ? 'Starting automation on the server'
-                    : 'Agent is applying your feedback'}
+                  {preparePlan.isPending
+                    ? 'Preparing automation plan'
+                    : planRevision.isPending
+                      ? 'Updating the automation plan'
+                      : start.isPending
+                        ? 'Starting automation on the server'
+                        : 'Agent is applying your feedback'}
                 </p>
                 <p className="text-muted-foreground mt-1 text-xs">
                   This can take 5–15+ minutes. Keep this tab open.
@@ -294,22 +364,41 @@ export function SessionDetailPage() {
             </div>
           ) : null}
 
-          <RunHeroSummary session={actionSession} repoName={repoName} />
+          <RunHeroSummary
+            session={actionSession}
+            brief={briefForSession}
+            repoName={repoName}
+          />
 
           <SessionBriefPanel
-            brief={briefQ.data}
+            brief={briefForSession}
             session={actionSession}
             isLoading={briefQ.isLoading}
           />
 
           <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start">
             <div className="min-w-0 flex-1 space-y-6">
-              <Tabs defaultValue="changes" className="w-full">
+              {planPhase ? (
+                <div ref={planComposerRef}>
+                  <PlanRevisionComposer
+                    session={actionSession}
+                    brief={briefForSession}
+                    instruction={planInstruction}
+                    pending={planRevision.isPending}
+                    onInstructionChange={setPlanInstruction}
+                    onSubmit={() => void submitPlanRevision()}
+                  />
+                </div>
+              ) : null}
+
+              {outputPhase ? (
+                <>
+                  <Tabs defaultValue="changes" className="w-full">
                 <TabsList className="bg-muted/40 h-auto w-full justify-start gap-1 rounded-xl p-1">
                   <TabsTrigger value="changes" className="rounded-lg text-xs">
                     Changes
-                    {reviewQ.data?.reviewSummary.changedFilesCount
-                      ? ` (${reviewQ.data.reviewSummary.changedFilesCount})`
+                    {reviewDataForSession?.reviewSummary.changedFilesCount
+                      ? ` (${reviewDataForSession.reviewSummary.changedFilesCount})`
                       : ''}
                   </TabsTrigger>
                   <TabsTrigger value="validation" className="rounded-lg text-xs">
@@ -344,10 +433,10 @@ export function SessionDetailPage() {
                           setSelectedFilePath(null)
                         }}
                       />
-                    ) : reviewQ.data?.reviewSummary.currentPatchVersion ? (
+                    ) : reviewDataForSession?.reviewSummary.currentPatchVersion ? (
                       <p className="text-muted-foreground mb-3 text-xs">
                         Code revision{' '}
-                        {reviewQ.data.reviewSummary.currentPatchVersion}
+                        {reviewDataForSession.reviewSummary.currentPatchVersion}
                       </p>
                     ) : null}
 
@@ -384,6 +473,7 @@ export function SessionDetailPage() {
               <div ref={composerRef} className="mt-4">
                 <RevisionComposer
                   session={actionSession}
+                  brief={briefForSession}
                   instruction={instruction}
                   scope={scope}
                   pending={revision.isPending}
@@ -392,22 +482,32 @@ export function SessionDetailPage() {
                   onSubmit={() => void submitRevision()}
                 />
               </div>
+                </>
+              ) : null}
             </div>
 
             <div className="w-full shrink-0 lg:sticky lg:top-20 lg:w-72 lg:max-w-[30%]">
               <ActionRail
                 session={actionSession}
+                brief={briefForSession}
                 repoName={repoName}
                 repoId={repoId}
+                preparePlanPending={preparePlan.isPending}
+                approvePlanPending={approvePlan.isPending}
                 startPending={start.isPending}
                 approvePending={approve.isPending}
                 createPrPending={createPr.isPending}
+                onPreparePlan={() => void submitPreparePlan()}
+                onApprovePlan={() => void submitApprovePlan()}
                 onStart={() => void submitStart()}
                 onApprove={() => void submitApprove()}
                 onCreatePr={() => {
-                  if (!guardSessionMutation(actionSession, 'create_pr')) return
+                  if (!guardSessionMutation(actionSession, briefForSession, 'create_pr')) return
                   setPrOpen(true)
                 }}
+                onScrollToPlanComposer={() =>
+                  planComposerRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }
               />
 
               <div className="border-border/60 bg-muted/10 text-muted-foreground mt-4 rounded-xl border px-4 py-3 text-xs">

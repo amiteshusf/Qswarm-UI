@@ -177,6 +177,7 @@ const summaries: SessionSummary[] = [
 export const mockDashboard: Dashboard = {
   sessionCounts: {
     draft: 1,
+    plan_ready: 0,
     queued: 2,
     running: 3,
     awaiting_review: 2,

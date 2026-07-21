@@ -1,8 +1,11 @@
 import { Loader2, Send } from 'lucide-react'
 import { useRef } from 'react'
 
-import { sessionActionHints } from '@/features/sessions/session-actions'
-import type { SessionDetail } from '@/api/schemas'
+import type { SessionBrief, SessionDetail } from '@/api/schemas'
+import {
+  buildActionContext,
+  sessionActionHints,
+} from '@/features/sessions/session-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,6 +20,7 @@ const SUGGESTIONS = [
 
 type Props = {
   session: SessionDetail
+  brief?: SessionBrief | null
   instruction: string
   scope: string
   pending: boolean
@@ -28,6 +32,7 @@ type Props = {
 
 export function RevisionComposer({
   session,
+  brief,
   instruction,
   scope,
   pending,
@@ -36,7 +41,7 @@ export function RevisionComposer({
   onSubmit,
   className,
 }: Props) {
-  const hints = sessionActionHints(session)
+  const hints = sessionActionHints(buildActionContext(session, brief))
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const enabled = hints.canRevise && !pending
 
@@ -50,9 +55,11 @@ export function RevisionComposer({
       >
         {hints.stage === 'running' || hints.stage === 'revising'
           ? 'Composer unlocks when the run is ready for your review.'
-          : hints.stage === 'published' || hints.stage === 'ready_to_publish'
-            ? 'Output is approved — publishing actions are in the sidebar.'
-            : 'Start automation and wait for review to send instructions.'}
+          : hints.isPlanPhase
+            ? 'Output change requests unlock after automation runs.'
+            : hints.stage === 'published' || hints.stage === 'ready_to_publish'
+              ? 'Output is approved — publishing actions are in the sidebar.'
+              : 'Run automation and wait for review to send output change requests.'}
       </div>
     )
   }

@@ -1,4 +1,5 @@
 import {
+  ClipboardList,
   ExternalLink,
   GitPullRequest,
   Loader2,
@@ -6,8 +7,9 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 
-import type { SessionDetail } from '@/api/schemas'
+import type { SessionBrief, SessionDetail } from '@/api/schemas'
 import {
+  buildActionContext,
   primaryActionLabel,
   sessionActionHints,
 } from '@/features/sessions/session-actions'
@@ -20,39 +22,55 @@ import { cn } from '@/lib/utils'
 
 type Props = {
   session: SessionDetail
+  brief?: SessionBrief | null
   repoName: string
   repoId: string
+  preparePlanPending: boolean
+  approvePlanPending: boolean
   startPending: boolean
   approvePending: boolean
   createPrPending: boolean
+  onPreparePlan: () => void
+  onApprovePlan: () => void
   onStart: () => void
   onApprove: () => void
   onCreatePr: () => void
-  onScrollToComposer?: () => void
+  onScrollToPlanComposer?: () => void
   className?: string
 }
 
 export function ActionRail({
   session,
+  brief,
   repoName,
   repoId,
+  preparePlanPending,
+  approvePlanPending,
   startPending,
   approvePending,
   createPrPending,
+  onPreparePlan,
+  onApprovePlan,
   onStart,
   onApprove,
   onCreatePr,
+  onScrollToPlanComposer,
   className,
 }: Props) {
-  const hints = sessionActionHints(session)
-  const heading = getNextStepHeading(session)
-  const message = getNextStepMessage(session)
+  const actionCtx = buildActionContext(session, brief)
+  const hints = sessionActionHints(actionCtx)
+  const heading = getNextStepHeading(actionCtx)
+  const message = getNextStepMessage(actionCtx)
   const primary = hints.primaryAction
 
   const primaryPending =
+    (primary === 'prepare_plan' && preparePlanPending) ||
+    (primary === 'approve_plan' && approvePlanPending) ||
     (primary === 'start_automation' && startPending) ||
     (primary === 'approve' && approvePending) ||
     (primary === 'create_pr' && createPrPending)
+
+  const decisionLabel = hints.isPlanPhase ? 'Plan decision' : 'Your decision'
 
   return (
     <aside
@@ -63,7 +81,7 @@ export function ActionRail({
     >
       <div>
         <p className="text-swarm text-xs font-semibold tracking-widest uppercase">
-          Your decision
+          {decisionLabel}
         </p>
         <p className="text-foreground mt-2 text-sm font-medium leading-snug">
           {heading}
@@ -75,6 +93,36 @@ export function ActionRail({
 
       {primary ? (
         <div className="flex flex-col gap-2">
+          {primary === 'prepare_plan' ? (
+            <Button
+              className="bg-swarm text-swarm-foreground hover:bg-swarm/90 w-full gap-2"
+              disabled={preparePlanPending}
+              onClick={onPreparePlan}
+            >
+              {primaryPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ClipboardList className="size-4" />
+              )}
+              {primaryActionLabel(primary)}
+            </Button>
+          ) : null}
+
+          {primary === 'approve_plan' ? (
+            <Button
+              className="bg-swarm text-swarm-foreground hover:bg-swarm/90 w-full gap-2"
+              disabled={approvePlanPending}
+              onClick={onApprovePlan}
+            >
+              {primaryPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="size-4" />
+              )}
+              {primaryActionLabel(primary)}
+            </Button>
+          ) : null}
+
           {primary === 'start_automation' ? (
             <Button
               className="bg-swarm text-swarm-foreground hover:bg-swarm/90 w-full gap-2"
@@ -127,6 +175,16 @@ export function ActionRail({
               {primaryActionLabel(primary)}
             </a>
           ) : null}
+
+          {hints.canRequestPlanRevision ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={onScrollToPlanComposer}
+            >
+              Request plan changes
+            </Button>
+          ) : null}
         </div>
       ) : hints.isWaiting &&
         (hints.stage === 'running' || hints.stage === 'revising') ? (
@@ -136,9 +194,9 @@ export function ActionRail({
         </div>
       ) : null}
 
-      {hints.canRevise ? (
+      {hints.canRevise && hints.isOutputReviewPhase ? (
         <p className="text-muted-foreground border-border/50 border-t pt-3 text-xs leading-relaxed">
-          To request changes, use the <strong>review conversation</strong>{' '}
+          To request <strong>output</strong> changes, use the review conversation
           composer below — type naturally, like ChatGPT.
         </p>
       ) : null}

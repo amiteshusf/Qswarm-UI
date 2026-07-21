@@ -1,9 +1,11 @@
-import { AlertCircle, FileCode2, GitBranch, Sparkles } from 'lucide-react'
-
 import type { SessionBrief, SessionDetail } from '@/api/schemas'
 import { Skeleton } from '@/components/ui/skeleton'
-import { sessionActionHints } from '@/features/sessions/session-actions'
+import {
+  buildActionContext,
+  sessionActionHints,
+} from '@/features/sessions/session-actions'
 import { cn } from '@/lib/utils'
+import { AlertCircle, CheckCircle2, FileCode2, GitBranch, Sparkles } from 'lucide-react'
 
 type Props = {
   brief?: SessionBrief | null
@@ -18,13 +20,10 @@ export function SessionBriefPanel({
   isLoading,
   className,
 }: Props) {
-  const hints = sessionActionHints(session)
-  const showPreRun =
-    hints.stage === 'draft' ||
-    hints.stage === 'queued' ||
-    brief?.automationBrief.available === false
+  const actionCtx = buildActionContext(session, brief)
+  const hints = sessionActionHints(actionCtx)
 
-  if (!showPreRun && !brief?.automationBrief.available) return null
+  if (!hints.isPlanPhase && !brief?.automationBrief.available) return null
 
   if (isLoading) {
     return <Skeleton className={cn('h-48 w-full rounded-2xl', className)} />
@@ -32,11 +31,14 @@ export function SessionBriefPanel({
 
   if (!brief) return null
 
-  const { sourceSummary, setup, automationBrief } = brief
+  const { sourceSummary, setup, automationBrief, sessionState } = brief
   const repo = setup.repository
   const repoLabel =
     repo?.displayName ??
     (repo?.owner && repo?.name ? `${repo.owner}/${repo.name}` : 'Repository')
+
+  const planReady = automationBrief.available
+  const planApproved = sessionState.planApproved === true
 
   return (
     <div
@@ -45,23 +47,28 @@ export function SessionBriefPanel({
         className,
       )}
     >
-      <div className="flex items-start gap-3">
-        <div className="bg-swarm/10 text-swarm flex size-10 shrink-0 items-center justify-center rounded-xl">
-          <Sparkles className="size-5" />
-        </div>
-        <div>
-          <p className="text-swarm text-xs font-semibold tracking-widest uppercase">
-            Automation plan
-          </p>
-          <h2 className="text-foreground mt-1 text-lg font-semibold">
-            {sourceSummary.sourceTitle ?? sourceSummary.sourceReference}
-          </h2>
-          {sourceSummary.objective ? (
-            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              {sourceSummary.objective}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="bg-swarm/10 text-swarm flex size-10 shrink-0 items-center justify-center rounded-xl">
+            <Sparkles className="size-5" />
+          </div>
+          <div>
+            <p className="text-swarm text-xs font-semibold tracking-widest uppercase">
+              {hints.isPlanPhase ? 'Automation plan' : 'Run context'}
             </p>
-          ) : null}
+            <h2 className="text-foreground mt-1 text-lg font-semibold">
+              {sourceSummary.sourceTitle ?? sourceSummary.sourceReference}
+            </h2>
+            {sourceSummary.objective ? (
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                {sourceSummary.objective}
+              </p>
+            ) : null}
+          </div>
         </div>
+        {hints.isPlanPhase ? (
+          <PlanStatusBadge planReady={planReady} planApproved={planApproved} />
+        ) : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -93,13 +100,15 @@ export function SessionBriefPanel({
 
       <div className="border-border/60 bg-muted/15 rounded-xl border p-4">
         <p className="text-sm font-medium">
-          {automationBrief.available ? 'What QSwarm will do' : 'Before you start'}
+          {planReady ? 'What QSwarm will do' : 'Before you prepare a plan'}
         </p>
         <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
           {automationBrief.summary ??
-            'Start automation to generate a plan from your source case and repository context.'}
+            (planReady
+              ? 'Review the automation plan below before approving.'
+              : 'Prepare a plan to see what QSwarm will automate from your source case and repository context.')}
         </p>
-        {automationBrief.available ? (
+        {planReady ? (
           <ul className="text-muted-foreground mt-3 space-y-1.5 text-xs">
             {automationBrief.frameworkType ? (
               <li>
@@ -125,6 +134,12 @@ export function SessionBriefPanel({
                 {automationBrief.actionOnTargetTestFile}
               </li>
             ) : null}
+            {automationBrief.planVersion ? (
+              <li>
+                <span className="text-foreground font-medium">Plan version:</span>{' '}
+                {automationBrief.planVersion}
+              </li>
+            ) : null}
           </ul>
         ) : null}
       </div>
@@ -141,6 +156,36 @@ export function SessionBriefPanel({
         </div>
       ) : null}
     </div>
+  )
+}
+
+function PlanStatusBadge({
+  planReady,
+  planApproved,
+}: {
+  planReady: boolean
+  planApproved: boolean
+}) {
+  if (planApproved) {
+    return (
+      <span className="border-status-succeeded/30 bg-status-succeeded/10 text-status-succeeded inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
+        <CheckCircle2 className="size-3.5" />
+        Plan approved
+      </span>
+    )
+  }
+  if (planReady) {
+    return (
+      <span className="border-status-awaiting/30 bg-status-awaiting/10 text-status-awaiting inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
+        <AlertCircle className="size-3.5" />
+        Awaiting plan approval
+      </span>
+    )
+  }
+  return (
+    <span className="border-border/60 bg-muted/40 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium">
+      Plan not prepared
+    </span>
   )
 }
 

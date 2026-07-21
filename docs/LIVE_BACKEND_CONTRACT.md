@@ -61,7 +61,7 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 ## `GET /api/v1/sessions/{id}/brief`
 
 - **Shape:** `{ sessionId, sessionState, sourceSummary, setup, automationBrief }`
-- **`sessionState`:** `status`, `workflowStatus`, `jobStatus`, `currentRoundNumber`, `nextActions[]`, timestamps
+- **`sessionState`:** `status`, `workflowStatus`, `jobStatus`, `currentRoundNumber`, `planApproved`, `planApprovedAt`, `nextActions[]`, timestamps
 - **`sourceSummary`:** `sourceReference`, `sourceTitle`, `caseId`, `objective`, optional `missingInformation[]`
 - **`setup`:** `engine`, `repositoryConnectionId`, nested `repository`, `branchPolicy`, `workspaceConfigured`
 - **`automationBrief`:** `available`, `summary`, optional `targetTestFile`, `filesToModify`, `frameworkType`, etc.
@@ -76,7 +76,12 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 All are **synchronous** on hosted Render (HTTP **200**, not 202). Start and revision can take **5–15+ minutes** (clone, npm, Copilot CLI, Playwright).
 
-- **start** — optional `{ actorId, repositoryConnectionId }`; returns full detail; UI status often becomes `awaiting_review` after first round.
+### Plan-first flow
+
+- **prepare-plan** — `{ actorId }`; returns session detail with `status: plan_ready`; brief `nextActions` become `approve_plan`, `request_plan_revision`.
+- **approve-plan** — `{ actorId }`; sets `sessionState.planApproved: true`; `nextActions` become `start_automation`.
+- **request-plan-revision** — `{ actorId, instruction }` (aliases `instructionText`, optional `scope` / `targetScope`); revises the automation plan before run.
+- **start** — optional `{ actorId, repositoryConnectionId }`; requires plan approval when plan-first flow is active; returns full detail.
 - **request-revision** — `{ actorId, instruction }` (aliases `instructionText`, `scope` / `targetScope`); **422** `revision_no_material_change` when Copilot made no scoped edits.
 - **approve** — `{ actorId }`; **409** `invalid_state` when not awaiting review.
 - **create-pr** — required `{ actorId, repositoryConnectionId }`; response may include `prExternalUrl`, `prExternalId`, `prStatus`.

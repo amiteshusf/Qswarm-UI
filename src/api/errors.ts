@@ -7,12 +7,18 @@ export type FormatErrorOptions = {
 }
 
 const INVALID_STATE_MESSAGES: Record<SessionMutationAction, string> = {
+  prepare_plan:
+    'A plan cannot be prepared in the current state. Refresh the page and try again.',
+  approve_plan:
+    'Plan approval is only available when a plan is ready for your review.',
+  request_plan_revision:
+    'Plan change requests are only available while the plan is awaiting approval.',
   start:
-    'This run cannot be started in its current state. Refresh the page and confirm setup is complete.',
+    'This run cannot be started in its current state. Approve the plan first, then try again.',
   revise:
     'Change requests are only available while the run is awaiting your review.',
   approve:
-    'Approval is only available when the run is ready for your review.',
+    'Output approval is only available when automation output is ready for review.',
   create_pr:
     'Creating a pull request requires an approved run. Complete review and approval first.',
 }

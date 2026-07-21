@@ -10,17 +10,20 @@ export function WorkflowStrip({
   status,
   workflowStatus,
   prExternalUrl,
+  planApproved,
   className,
 }: {
   status: SessionStatus
   workflowStatus?: string
   prExternalUrl?: string | null
+  planApproved?: boolean
   className?: string
 }) {
   const current = friendlyWorkflowStepIndex(
     status,
     workflowStatus,
     prExternalUrl,
+    planApproved,
   )
   const terminal = status === 'failed' || status === 'cancelled'
 
