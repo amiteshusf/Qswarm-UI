@@ -53,13 +53,13 @@ export function DashboardPage() {
         description="Prioritized by review decisions, active automation, failures, and recent publishes."
         actions={
           <div className="flex flex-wrap gap-2">
+            <LinkButton to="/automation-backlog">
+              <Plus className="size-4" />
+              Automate test case
+            </LinkButton>
             <LinkButton variant="outline" to="/sessions?status=awaiting_review">
               <ClipboardCheck className="size-4" />
               Review queue
-            </LinkButton>
-            <LinkButton to="/sessions">
-              <Plus className="size-4" />
-              New run
             </LinkButton>
           </div>
         }

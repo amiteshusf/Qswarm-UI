@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { AutomationBacklogPage } from '@/features/automation-backlog/automation-backlog-page'
 import { BranchPoliciesPage } from '@/features/branch-policies/branch-policies-page'
 import { BranchPolicyFormPage } from '@/features/branch-policies/branch-policy-form-page'
 import { DashboardPage } from '@/features/dashboard/dashboard-page'
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'automation-backlog', element: <AutomationBacklogPage /> },
       { path: 'repo-connections', element: <RepoConnectionsPage /> },
       { path: 'repo-connections/new', element: <RepoConnectionFormPage /> },
       { path: 'repo-connections/:id', element: <RepoConnectionFormPage /> },

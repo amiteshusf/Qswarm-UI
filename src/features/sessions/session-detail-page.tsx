@@ -51,6 +51,7 @@ import { PlanRevisionComposer } from '@/features/sessions/review/plan-revision-c
 import { RevisionComposer } from '@/features/sessions/review/revision-composer'
 import { RunHeroSummary } from '@/features/sessions/review/run-hero-summary'
 import { SessionBriefPanel } from '@/features/sessions/review/session-brief-panel'
+import { TestCaseContextBanner } from '@/features/sessions/review/test-case-context-banner'
 import { ValidationSummaryPanel } from '@/features/sessions/review/validation-summary-panel'
 import {
   buildActionContext,
@@ -369,6 +370,8 @@ export function SessionDetailPage() {
             brief={briefForSession}
             repoName={repoName}
           />
+
+          <TestCaseContextBanner session={actionSession} brief={briefForSession} />
 
           <SessionBriefPanel
             brief={briefForSession}

@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   GitBranch,
   LayoutDashboard,
+  ListChecks,
   ListTree,
   ServerCog,
   Workflow,
@@ -31,7 +32,13 @@ const navGroups: NavGroup[] = [
     label: 'Operations',
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-      { to: '/sessions', label: 'Automation runs', icon: Workflow, emphasis: true },
+      {
+        to: '/automation-backlog',
+        label: 'Automation backlog',
+        icon: ListChecks,
+        emphasis: true,
+      },
+      { to: '/sessions', label: 'Automation runs', icon: Workflow },
       {
         to: '/sessions?status=awaiting_review',
         label: 'Review queue',
@@ -62,6 +69,10 @@ function NavItemLink({ to, label, icon: Icon, end, emphasis, matchSearch }: NavI
     isActive =
       location.pathname === '/sessions' &&
       !location.search.includes('status=awaiting_review')
+  } else if (path === '/automation-backlog') {
+    isActive =
+      location.pathname === '/automation-backlog' ||
+      location.pathname.startsWith('/automation-backlog/')
   } else if (end) {
     isActive = location.pathname === path
   } else {

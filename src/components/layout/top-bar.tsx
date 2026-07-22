@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 
 const routeTitles: Record<string, string> = {
   '/': 'Overview',
+  '/automation-backlog': 'Automation backlog',
   '/sessions': 'Automation runs',
   '/repo-connections': 'Repositories',
   '/branch-policies': 'Branch policies',

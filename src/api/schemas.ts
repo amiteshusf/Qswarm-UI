@@ -359,6 +359,54 @@ export const revisionRequestSchema = z
     scope: v.scope?.trim() || undefined,
   }))
 
+// --- Test case automation backlog ---
+
+export const automationBacklogStatusSchema = z.enum([
+  'not_automated',
+  'in_progress',
+  'automated',
+  'failed',
+])
+
+export const automationBacklogTestCaseSchema = z.object({
+  id: z.string(),
+  caseId: z.string().optional(),
+  title: z.string(),
+  sourceSystem: z.string().optional(),
+  sourceReference: z.string().optional(),
+  storyKey: z.string().optional(),
+  storyTitle: z.string().optional(),
+  automationStatus: automationBacklogStatusSchema,
+  targetArea: z.string().optional(),
+  repoConnectionId: z.string().optional(),
+  branchPolicyId: z.string().optional(),
+  sessionId: z.string().nullable().optional(),
+  objective: z.string().optional(),
+  stepsPreview: z.string().optional(),
+  approvedAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+})
+
+export const automationBacklogListSchema = z.object({
+  items: z.array(automationBacklogTestCaseSchema),
+  total: z.coerce.number().optional(),
+})
+
+export const automateTestCaseInputSchema = z
+  .object({
+    repositoryConnectionId: z.string().min(1),
+    branchPolicyId: z.string().optional(),
+    engine: z.string().min(1),
+  })
+  .transform((v) => ({
+    repositoryConnectionId: v.repositoryConnectionId.trim(),
+    branchPolicyId: v.branchPolicyId?.trim() || undefined,
+    engine: v.engine.trim() || 'stub',
+  }))
+
+export type AutomateTestCaseInput = z.infer<typeof automateTestCaseInputSchema>
+export type AutomateTestCaseFormValues = z.input<typeof automateTestCaseInputSchema>
+
 // --- Session product endpoints (GET /sessions/{id}/brief, /review-data) ---
 
 export const sessionBriefStateSchema = z.object({
@@ -518,3 +566,7 @@ export type ReviewConversationMessage = z.infer<
   typeof reviewConversationMessageSchema
 >
 export type SessionPrInfo = z.infer<typeof sessionPrInfoSchema>
+export type AutomationBacklogTestCase = z.infer<
+  typeof automationBacklogTestCaseSchema
+>
+export type AutomationBacklogStatus = z.infer<typeof automationBacklogStatusSchema>

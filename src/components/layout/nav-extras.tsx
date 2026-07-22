@@ -15,7 +15,8 @@ import { Menu, Moon, Sun } from 'lucide-react'
 
 const mobileLinks = [
   { to: '/', label: 'Overview', end: true },
-  { to: '/sessions', label: 'Sessions' },
+  { to: '/automation-backlog', label: 'Backlog' },
+  { to: '/sessions', label: 'Runs' },
   { to: '/sessions?status=awaiting_review', label: 'Review' },
   { to: '/repo-connections', label: 'Repos' },
   { to: '/settings', label: 'Setup' },

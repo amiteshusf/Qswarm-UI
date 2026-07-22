@@ -9,5 +9,8 @@ export const qk = {
   session: (id: string) => ['sessions', id] as const,
   sessionBrief: (id: string) => ['sessions', id, 'brief'] as const,
   sessionReviewData: (id: string) => ['sessions', id, 'review-data'] as const,
+  automationBacklog: (filters?: Record<string, string | undefined>) =>
+    ['automation-backlog', filters ?? {}] as const,
+  testCase: (id: string) => ['test-cases', id] as const,
   settings: ['settings'] as const,
 }

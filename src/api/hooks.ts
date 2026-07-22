@@ -225,3 +225,41 @@ export function useSettings() {
     queryFn: () => api.getSettings(),
   })
 }
+
+export function useAutomationBacklog(filters?: {
+  q?: string
+  status?: string
+}) {
+  return useQuery({
+    queryKey: qk.automationBacklog(filters),
+    queryFn: () => api.listAutomationBacklog(filters),
+    staleTime: 20_000,
+  })
+}
+
+export function useTestCase(id: string | undefined) {
+  return useQuery({
+    queryKey: qk.testCase(id ?? ''),
+    queryFn: () => api.getTestCase(id!),
+    enabled: Boolean(id),
+  })
+}
+
+export function useAutomateTestCase() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      testCaseId,
+      input,
+    }: {
+      testCaseId: string
+      input: unknown
+    }) => api.automateTestCase(testCaseId, input),
+    onSuccess: (data) => {
+      void qc.invalidateQueries({ queryKey: ['automation-backlog'] })
+      void qc.invalidateQueries({ queryKey: ['sessions'] })
+      void qc.invalidateQueries({ queryKey: qk.dashboard })
+      invalidateSessionQueries(qc, data.id)
+    },
+  })
+}

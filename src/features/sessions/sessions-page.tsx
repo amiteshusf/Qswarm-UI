@@ -144,7 +144,12 @@ export function SessionsPage() {
             : 'Track each QA automation from setup through publish.'
         }
         actions={
-          <Dialog
+          <div className="flex flex-wrap gap-2">
+            <Link to="/automation-backlog" className={buttonVariants()}>
+              <Plus className="size-4" />
+              Automate test case
+            </Link>
+            <Dialog
             open={open}
             onOpenChange={(next) => {
               setOpen(next)
@@ -153,16 +158,16 @@ export function SessionsPage() {
               }
             }}
           >
-            <DialogTrigger className={buttonVariants()}>
+            <DialogTrigger className={buttonVariants({ variant: 'outline' })}>
               <Plus className="size-4" />
-              New automation run
+              Advanced — manual run
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Create automation run</DialogTitle>
+                <DialogTitle>Create manual automation run</DialogTitle>
                 <DialogDescription>
-                  Connect a repository, pick the coding engine, and identify the
-                  source signal your backend expects.
+                  For ad-hoc runs without a backlog test case. Prefer starting
+                  from the automation backlog when automating approved cases.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
@@ -317,6 +322,7 @@ export function SessionsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 

@@ -58,6 +58,21 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 - **Shape:** flat read-only slice, e.g. `applicationName`, `environment`, `debug`, `jira: { useStub, configured }`, `codingProvider`, `workspaceRoot`, `claudeCodeEnabled`, `copilotAgentEnabled`, `notes` — **not** the older nested `engine` / `infrastructure` / `source` document.
 
+## `GET /api/v1/test-cases/automation-backlog`
+
+- **Shape:** `{ items: AutomationBacklogTestCase[], total? }` or top-level array
+- **Query:** optional `q` (search), `status` (`not_automated`, `in_progress`, `automated`, `failed`)
+- **Item fields:** `id`, `caseId`, `title`, `sourceSystem`, `sourceReference`, `storyKey`, `storyTitle`, `automationStatus`, `targetArea`, `repoConnectionId`, `sessionId`, `objective`, `stepsPreview`, timestamps
+
+## `GET /api/v1/test-cases/{id}`
+
+- **Shape:** single backlog test case (same fields as list item)
+
+## `POST /api/v1/test-cases/{id}/automate`
+
+- **Body:** `{ actorId, createdBy, repositoryConnectionId, branchPolicyId?, engine, codingEngine? }`
+- **Response:** `sessionDetailSchema` — opens the plan-first session flow for that test case
+
 ## `GET /api/v1/sessions/{id}/brief`
 
 - **Shape:** `{ sessionId, sessionState, sourceSummary, setup, automationBrief }`

@@ -21,11 +21,18 @@ import {
   mockSettings,
 } from '@/api/mocks/data'
 import {
+  findMockTestCase,
+  mockAutomationBacklog,
+} from '@/api/mocks/test-cases'
+import {
   buildMockSessionBrief,
   buildMockSessionReviewData,
   setMockPlanApproved,
 } from '@/api/mocks/session-product'
 import {
+  automateTestCaseInputSchema,
+  automationBacklogListSchema,
+  automationBacklogTestCaseSchema,
   branchPolicyInputSchema,
   branchPolicySchema,
   dashboardSchema,
@@ -40,7 +47,11 @@ import {
   sessionSummarySchema,
   settingsSchema,
 } from '@/api/schemas'
-import type { RepoConnection, SessionCreateInput } from '@/api/schemas'
+import type {
+  AutomateTestCaseInput,
+  RepoConnection,
+  SessionCreateInput,
+} from '@/api/schemas'
 import {
   apiBaseUrl,
   getApiConfigurationError,
@@ -212,6 +223,50 @@ function parseRepoConnectionsListResponse(
   return Array.isArray(parsed.data) ? parsed.data : parsed.data.items
 }
 
+function parseAutomationBacklogList(data: unknown, resourceLabel: string) {
+  const listSchema = z.union([
+    automationBacklogListSchema,
+    z.object({ items: z.array(automationBacklogTestCaseSchema) }),
+    z.array(automationBacklogTestCaseSchema),
+  ])
+  const parsed = listSchema.safeParse(data)
+  if (!parsed.success) {
+    throw new SchemaResponseError(
+      `Zod validation failed for ${resourceLabel}.`,
+      parsed.error,
+      resourceLabel,
+    )
+  }
+  if (Array.isArray(parsed.data)) {
+    return { items: parsed.data, total: parsed.data.length }
+  }
+  if ('items' in parsed.data && !('total' in parsed.data)) {
+    return { items: parsed.data.items, total: parsed.data.items.length }
+  }
+  return parsed.data
+}
+
+function automateTestCaseWireBody(
+  testCaseId: string,
+  parsed: AutomateTestCaseInput,
+  testCase?: { sourceReference?: string; caseId?: string; title?: string; sourceSystem?: string } | null,
+): Record<string, unknown> {
+  const wire: Record<string, unknown> = {
+    actorId: sessionActorId(),
+    createdBy: sessionCreatedBy,
+    repositoryConnectionId: parsed.repositoryConnectionId,
+    engine: parsed.engine,
+    codingEngine: parsed.engine,
+    approvedCaseId: testCaseId,
+    sourceRef:
+      testCase?.sourceReference ?? testCase?.caseId ?? testCaseId,
+  }
+  if (parsed.branchPolicyId) wire.branchPolicyId = parsed.branchPolicyId
+  if (testCase?.title) wire.sourceLabel = testCase.title
+  if (testCase?.sourceSystem) wire.sourceSystem = testCase.sourceSystem
+  return wire
+}
+
 export const api = {
   async getDashboard() {
     if (useMockData) {
@@ -379,6 +434,115 @@ export const api = {
       branchPolicySchema,
       data,
       `PATCH /branch-policies/${id}`,
+    )
+  },
+
+  async listAutomationBacklog(filters?: {
+    q?: string
+    status?: string
+  }) {
+    if (useMockData) {
+      await delay(90)
+      let items = [...mockAutomationBacklog]
+      if (filters?.status && filters.status !== 'all') {
+        items = items.filter((tc) => tc.automationStatus === filters.status)
+      }
+      if (filters?.q?.trim()) {
+        const q = filters.q.trim().toLowerCase()
+        items = items.filter(
+          (tc) =>
+            tc.title.toLowerCase().includes(q) ||
+            tc.caseId?.toLowerCase().includes(q) ||
+            tc.storyKey?.toLowerCase().includes(q) ||
+            tc.sourceReference?.toLowerCase().includes(q),
+        )
+      }
+      return automationBacklogListSchema.parse({
+        items,
+        total: items.length,
+      })
+    }
+    const params = new URLSearchParams()
+    if (filters?.q?.trim()) params.set('q', filters.q.trim())
+    if (filters?.status && filters.status !== 'all') {
+      params.set('status', filters.status)
+    }
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    const data = await fetchJson<unknown>(
+      `${url('test-cases', 'automation-backlog')}${qs}`,
+    )
+    return parseAutomationBacklogList(
+      data,
+      'GET /test-cases/automation-backlog',
+    )
+  },
+
+  async getTestCase(id: string) {
+    if (useMockData) {
+      await delay(60)
+      const row = findMockTestCase(id)
+      if (!row) throw new ApiError('Not found', 404)
+      return automationBacklogTestCaseSchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('test-cases', id))
+    return parseWithSchema(
+      automationBacklogTestCaseSchema,
+      data,
+      `GET /test-cases/${id}`,
+    )
+  },
+
+  async automateTestCase(id: string, input: unknown) {
+    const body = automateTestCaseInputSchema.parse(input)
+    if (useMockData) {
+      await delay(160)
+      const tc = findMockTestCase(id)
+      if (!tc) throw new ApiError('Test case not found', 404)
+      const sessionId = `sess_${crypto.randomUUID().slice(0, 8)}`
+      const row = sessionDetailSchema.parse({
+        ...mockSessionDetail,
+        id: sessionId,
+        status: 'draft',
+        engine: body.engine,
+        repoConnectionId: body.repositoryConnectionId,
+        branchPolicyId: body.branchPolicyId,
+        sourceRef: tc.sourceReference ?? tc.caseId ?? tc.id,
+        sourceLabel: tc.title,
+        approvedCaseId: tc.id,
+        rounds: [],
+        patches: [],
+        executions: [],
+        reviews: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      mockSessionsStore.detail = row
+      mockSessionsStore.list = [
+        {
+          id: row.id,
+          status: row.status,
+          engine: row.engine,
+          repoConnectionId: row.repoConnectionId,
+          sourceRef: row.sourceRef,
+          sourceLabel: row.sourceLabel,
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
+        },
+        ...mockSessionsStore.list,
+      ]
+      tc.automationStatus = 'in_progress'
+      tc.sessionId = sessionId
+      return row
+    }
+    const tc = await this.getTestCase(id).catch(() => null)
+    const data = await fetchJson<unknown>(url('test-cases', id, 'automate'), {
+      method: 'POST',
+      body: JSON.stringify(automateTestCaseWireBody(id, body, tc)),
+    })
+    return parseWithSchema(
+      sessionDetailSchema,
+      data,
+      `POST /test-cases/${id}/automate`,
     )
   },
 
