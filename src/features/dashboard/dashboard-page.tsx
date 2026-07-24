@@ -35,11 +35,13 @@ export function DashboardPage() {
   const awaiting = dashboard.data?.sessionCounts.awaiting_review ?? 0
   const failed = dashboard.data?.sessionCounts.failed ?? 0
 
-  const storyItems = stories.data?.items ?? []
+  const storyItems = stories.data?.stories ?? []
   const needsAnalysis = storyItems.filter(
-    (s) => !s.hasActiveRun && (s.acceptanceCriteriaReadiness ?? 'ready') !== 'missing',
+    (s) => !s.hasActiveRun && s.readiness !== 'missing_ac',
   )
-  const activeDesignRuns = storyItems.filter((s) => s.hasActiveRun && s.activeRunStatus !== 'published')
+  const activeDesignRuns = storyItems.filter(
+    (s) => s.hasActiveRun && s.activeRunId,
+  )
   const automationReady = backlog.data?.items.length ?? 0
 
   const recent = dashboard.data?.recentSessions ?? []
@@ -261,11 +263,9 @@ function StoryList({
   showRun,
 }: {
   items: Array<{
-    key: string
+    storyKey: string
     title: string
     activeRunId?: string | null
-    activeRunStatus?: string
-    updatedAt?: string
   }>
   showRun?: boolean
 }) {
@@ -273,7 +273,7 @@ function StoryList({
     <div className="space-y-2">
       {items.map((s) => (
         <Link
-          key={s.key}
+          key={s.storyKey}
           to={
             showRun && s.activeRunId
               ? `/test-design/${s.activeRunId}`
@@ -282,12 +282,12 @@ function StoryList({
           className="border-border/70 bg-surface-raised hover:border-swarm/35 flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors"
         >
           <div className="min-w-0">
-            <p className="font-mono text-sm font-semibold">{s.key}</p>
+            <p className="font-mono text-sm font-semibold">{s.storyKey}</p>
             <p className="truncate text-sm">{s.title}</p>
           </div>
-          {showRun && s.activeRunStatus ? (
-            <span className="text-muted-foreground shrink-0 text-xs capitalize">
-              {s.activeRunStatus.replace(/_/g, ' ')}
+          {showRun ? (
+            <span className="text-muted-foreground shrink-0 text-xs">
+              In progress
             </span>
           ) : null}
         </Link>

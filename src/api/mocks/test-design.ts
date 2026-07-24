@@ -91,7 +91,7 @@ export function createMockTestDesignRun(storyKey: string): TestDesignRun {
     status: 'draft',
     nextActions: ['analyze_requirements'],
     currentVersion: 0,
-    externalUrl: story?.externalUrl,
+    externalUrl: story?.jiraUrl,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
@@ -99,7 +99,6 @@ export function createMockTestDesignRun(storyKey: string): TestDesignRun {
   if (story) {
     story.hasActiveRun = true
     story.activeRunId = id
-    story.activeRunStatus = run.status
   }
   return run
 }
@@ -354,7 +353,6 @@ export function updateMockRun(id: string, patch: Partial<TestDesignRun>) {
   mockTestDesignStore.runs.set(id, updated)
   const story = findMockStory(updated.storyKey)
   if (story) {
-    story.activeRunStatus = updated.status
     story.hasActiveRun = true
     story.activeRunId = updated.id
   }

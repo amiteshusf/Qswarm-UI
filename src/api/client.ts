@@ -21,9 +21,8 @@ import {
   mockSettings,
 } from '@/api/mocks/data'
 import {
-  mockJiraProjects,
-  mockJiraStories,
   findMockStory,
+  mockJiraStories,
 } from '@/api/mocks/stories'
 import {
   buildMockRequirementAnalysis,
@@ -50,8 +49,8 @@ import {
   repoConnectionFormSchema,
   repoConnectionFormToWire,
   repoConnectionSchema,
-  jiraStoryListSchema,
   jiraStorySchema,
+  storyListSchema,
   requirementAnalysisSchema,
   revisionRequestSchema,
   sessionCreateInputSchema,
@@ -916,27 +915,24 @@ export const api = {
   }) {
     if (useMockData) {
       await delay(90)
-      let items = [...mockJiraStories]
+      let stories = [...mockJiraStories]
       if (filters?.project) {
-        items = items.filter((s) => s.projectKey === filters.project)
+        stories = stories.filter((s) => s.projectKey === filters.project)
       }
       if (filters?.readiness) {
-        items = items.filter(
-          (s) => s.acceptanceCriteriaReadiness === filters.readiness,
-        )
+        stories = stories.filter((s) => s.readiness === filters.readiness)
       }
       if (filters?.q?.trim()) {
         const q = filters.q.trim().toLowerCase()
-        items = items.filter(
+        stories = stories.filter(
           (s) =>
-            s.key.toLowerCase().includes(q) ||
+            s.storyKey.toLowerCase().includes(q) ||
             s.title.toLowerCase().includes(q),
         )
       }
-      return jiraStoryListSchema.parse({
-        items,
-        total: items.length,
-        projects: mockJiraProjects,
+      return storyListSchema.parse({
+        stories,
+        total: stories.length,
       })
     }
     const params = new URLSearchParams()
@@ -947,7 +943,7 @@ export const api = {
     if (filters?.readiness) params.set('readiness', filters.readiness)
     const qs = params.toString() ? `?${params.toString()}` : ''
     const data = await fetchJson<unknown>(`${url('stories')}${qs}`)
-    return parseWithSchema(jiraStoryListSchema, data, 'GET /stories')
+    return parseWithSchema(storyListSchema, data, 'GET /stories')
   },
 
   async getStory(key: string) {

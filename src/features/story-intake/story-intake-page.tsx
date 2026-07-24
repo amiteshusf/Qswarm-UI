@@ -1,4 +1,3 @@
-import { formatDistanceToNow } from 'date-fns'
 import { ExternalLink, Play, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -22,13 +21,15 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  acceptanceCriteriaStatusLabel,
+  deriveProjectsFromStories,
+  formatMissingInformationSummary,
+  formatStoryMetaLine,
+  resolveStoryRowAction,
+  storyRowActionLabel,
+} from '@/features/story-intake/story-intake-utils'
 import { cn } from '@/lib/utils'
-
-const readinessLabels = {
-  ready: 'Ready',
-  partial: 'Partial AC',
-  missing: 'Missing AC',
-} as const
 
 export function StoryIntakePage() {
   const navigate = useNavigate()
@@ -46,27 +47,30 @@ export function StoryIntakePage() {
   const createRun = useCreateTestDesignRun()
 
   const jiraConfigured = settings.data?.jira?.configured
-  const items = storiesQ.data?.items ?? []
-  const projects = storiesQ.data?.projects ?? []
-
-  const selectedStories = useMemo(
-    () => items.filter((s) => selected.has(s.key)),
-    [items, selected],
+  const stories = storiesQ.data?.stories ?? []
+  const projects = useMemo(
+    () => deriveProjectsFromStories(stories),
+    [stories],
   )
 
-  function toggleStory(key: string) {
+  const selectedStories = useMemo(
+    () => stories.filter((s) => selected.has(s.storyKey)),
+    [stories, selected],
+  )
+
+  function toggleStory(storyKey: string) {
     setSelected((prev) => {
       const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
+      if (next.has(storyKey)) next.delete(storyKey)
+      else next.add(storyKey)
       return next
     })
   }
 
   async function startTestDesign(story: JiraStory) {
     try {
-      const run = await createRun.mutateAsync(story.key)
-      toast.success(`Test-design run opened for ${story.key}`)
+      const run = await createRun.mutateAsync(story.storyKey)
+      toast.success(`Test-design run opened for ${story.storyKey}`)
       navigate(`/test-design/${run.id}`)
     } catch (e) {
       toast.error(formatErrorForToast(e))
@@ -80,7 +84,7 @@ export function StoryIntakePage() {
   }
 
   function onRowAction(story: JiraStory) {
-    if (story.hasActiveRun && story.activeRunId) {
+    if (resolveStoryRowAction(story) === 'open_run' && story.activeRunId) {
       navigate(`/test-design/${story.activeRunId}`)
       return
     }
@@ -157,7 +161,7 @@ export function StoryIntakePage() {
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="ready">Ready</TabsTrigger>
               <TabsTrigger value="partial">Partial</TabsTrigger>
-              <TabsTrigger value="missing">Missing AC</TabsTrigger>
+              <TabsTrigger value="missing_ac">Missing AC</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -169,19 +173,19 @@ export function StoryIntakePage() {
             <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : stories.length === 0 ? (
         <EmptyState
           title="No eligible stories"
           description="Try a different project or search. Stories need to be synced from Jira."
         />
       ) : (
         <div className="space-y-2">
-          {items.map((story) => (
+          {stories.map((story) => (
             <StoryRow
-              key={story.key}
+              key={story.storyKey}
               story={story}
-              checked={selected.has(story.key)}
-              onToggle={() => toggleStory(story.key)}
+              checked={selected.has(story.storyKey)}
+              onToggle={() => toggleStory(story.storyKey)}
               onAction={() => onRowAction(story)}
               pending={createRun.isPending}
             />
@@ -205,8 +209,11 @@ function StoryRow({
   onAction: () => void
   pending: boolean
 }) {
-  const readiness = story.acceptanceCriteriaReadiness ?? 'ready'
-  const hasRun = story.hasActiveRun && story.activeRunId
+  const acStatus = story.acceptanceCriteriaStatus
+  const rowAction = resolveStoryRowAction(story)
+  const missingSummary = formatMissingInformationSummary(
+    story.missingInformation,
+  )
 
   return (
     <div
@@ -221,65 +228,58 @@ function StoryRow({
           checked={checked}
           onChange={onToggle}
           className="border-border mt-1 size-4 rounded"
-          aria-label={`Select ${story.key}`}
+          aria-label={`Select ${story.storyKey}`}
         />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm font-semibold">{story.key}</span>
+            <span className="font-mono text-sm font-semibold">
+              {story.storyKey}
+            </span>
             <Badge variant="outline">{story.status}</Badge>
             <Badge
               variant={
-                readiness === 'ready'
+                acStatus === 'ready'
                   ? 'default'
-                  : readiness === 'missing'
+                  : acStatus === 'missing_ac'
                     ? 'destructive'
                     : 'secondary'
               }
             >
-              {readinessLabels[readiness]}
+              {acceptanceCriteriaStatusLabel(acStatus)}
             </Badge>
-            {hasRun ? (
+            {story.hasActiveRun ? (
               <Badge variant="secondary">QSwarm run active</Badge>
             ) : null}
           </div>
           <p className="mt-1 truncate text-sm font-medium">{story.title}</p>
           <p className="text-muted-foreground mt-1 text-xs">
-            {story.projectName ?? story.projectKey}
-            {story.sprint ? ` · ${story.sprint}` : ''}
-            {story.updatedAt
-              ? ` · Updated ${formatDistanceToNow(new Date(story.updatedAt), { addSuffix: true })}`
-              : ''}
+            {formatStoryMetaLine(story)}
           </p>
-          {story.missingInformation?.length ? (
+          {missingSummary ? (
             <p className="text-status-awaiting mt-1 text-xs">
-              Missing: {story.missingInformation[0]}
-              {story.missingInformation.length > 1
-                ? ` (+${story.missingInformation.length - 1} more)`
-                : ''}
+              Missing: {missingSummary}
             </p>
           ) : null}
         </div>
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-        {story.externalUrl ? (
-          <a
-            href={story.externalUrl}
-            target="_blank"
-            rel="noreferrer"
-            className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-          >
-            <ExternalLink className="size-4" />
-            Jira
-          </a>
-        ) : null}
+        <a
+          href={story.jiraUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+        >
+          <ExternalLink className="size-4" />
+          Jira
+        </a>
         <Button
           size="sm"
-          variant={hasRun ? 'outline' : 'default'}
+          variant={rowAction === 'open_run' ? 'outline' : 'default'}
           disabled={pending}
           onClick={onAction}
         >
-          {hasRun ? 'Open run' : 'Start test design'}
+          {storyRowActionLabel(rowAction)}
         </Button>
       </div>
     </div>

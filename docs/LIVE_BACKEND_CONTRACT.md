@@ -60,13 +60,37 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 ## `GET /api/v1/stories`
 
-- **Query:** optional `q`, `project`, `sprint`, `status`, `readiness` (`ready` | `partial` | `missing`)
-- **Response:** `{ items: JiraStory[], total?, projects?: { key, name }[] }`
-- **Item fields:** `key`, `title`, `status`, `sprint`, `projectKey`, `acceptanceCriteriaReadiness`, `missingInformation[]`, `hasActiveRun`, `activeRunId`, `activeRunStatus`, `externalUrl`
+- **Query:** optional `q`, `project`, `sprint`, `status`, `readiness` (`ready` | `partial` | `missing_ac`)
+- **Response:**
 
-## `GET /api/v1/stories/{key}`
+```json
+{
+  "stories": [
+    {
+      "storyKey": "STUB-1",
+      "title": "Stub result for JQL...",
+      "description": "Stub Jira issue...",
+      "status": "Open",
+      "sprint": null,
+      "projectKey": "STUB",
+      "assignee": null,
+      "readiness": "partial",
+      "acceptanceCriteriaStatus": "partial",
+      "missingInformation": ["Few explicit acceptance criteria were found"],
+      "hasActiveRun": false,
+      "activeRunId": null,
+      "jiraUrl": "https://usfoods.atlassian.net/browse/STUB-1"
+    }
+  ],
+  "total": 1
+}
+```
 
-- **Response:** single `JiraStory`
+- **Item fields:** `storyKey`, `title`, `description`, `status`, `sprint` (nullable), `projectKey`, `assignee` (nullable), `readiness`, `acceptanceCriteriaStatus`, `missingInformation[]`, `hasActiveRun`, `activeRunId` (nullable), `jiraUrl`
+
+## `GET /api/v1/stories/{storyKey}`
+
+- **Response:** single story object (same fields as list item)
 
 ## `POST /api/v1/stories/{key}/test-design-runs`
 

@@ -577,34 +577,38 @@ export type AutomationBacklogStatus = z.infer<typeof automationBacklogStatusSche
 export const jiraStoryReadinessSchema = z.enum([
   'ready',
   'partial',
-  'missing',
+  'missing_ac',
+])
+
+export const jiraStoryAcceptanceCriteriaStatusSchema = z.enum([
+  'ready',
+  'partial',
+  'missing_ac',
 ])
 
 export const jiraStorySchema = z.object({
-  key: z.string(),
+  storyKey: z.string(),
   title: z.string(),
+  description: z.string(),
   status: z.string(),
-  sprint: z.string().optional(),
+  sprint: z.string().nullable(),
   projectKey: z.string(),
-  projectName: z.string().optional(),
-  acceptanceCriteriaReadiness: jiraStoryReadinessSchema.optional(),
-  missingInformation: z.array(z.string()).optional(),
-  hasActiveRun: z.boolean().optional(),
-  activeRunId: z.string().nullable().optional(),
-  activeRunStatus: z.string().optional(),
-  externalUrl: z.string().optional(),
-  priority: z.string().optional(),
-  assignee: z.string().optional(),
-  updatedAt: z.string().optional(),
+  assignee: z.string().nullable(),
+  readiness: jiraStoryReadinessSchema,
+  acceptanceCriteriaStatus: jiraStoryAcceptanceCriteriaStatusSchema,
+  missingInformation: z.array(z.string()),
+  hasActiveRun: z.boolean(),
+  activeRunId: z.string().nullable(),
+  jiraUrl: z.string().url(),
 })
 
-export const jiraStoryListSchema = z.object({
-  items: z.array(jiraStorySchema),
-  total: z.coerce.number().optional(),
-  projects: z
-    .array(z.object({ key: z.string(), name: z.string() }))
-    .optional(),
+export const storyListSchema = z.object({
+  stories: z.array(jiraStorySchema),
+  total: z.number(),
 })
+
+/** @deprecated Use storyListSchema */
+export const jiraStoryListSchema = storyListSchema
 
 const TEST_DESIGN_STATUS_VALUES = [
   'draft',

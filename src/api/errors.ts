@@ -181,11 +181,26 @@ export function formatErrorForToast(
 
 export function formatErrorTechnicalDetail(error: Error): string {
   if (error instanceof SchemaResponseError) {
-    return JSON.stringify(
-      { resource: error.resourceLabel, issues: error.zodIssues },
-      null,
-      2,
-    )
+    const lines = error.zodIssues.map((issue) => {
+      const path =
+        issue.path.length > 0 ? issue.path.map(String).join('.') : '(root)'
+      const parts = [`path: ${path}`, `code: ${issue.code}`, `message: ${issue.message}`]
+      if ('expected' in issue && issue.expected !== undefined) {
+        parts.push(`expected: ${String(issue.expected)}`)
+      }
+      if ('received' in issue && issue.received !== undefined) {
+        parts.push(`received: ${String(issue.received)}`)
+      } else if ('input' in issue && issue.input !== undefined) {
+        parts.push(`received: ${JSON.stringify(issue.input)}`)
+      } else {
+        const receivedMatch = issue.message.match(/received (.+)$/i)
+        if (receivedMatch?.[1]) {
+          parts.push(`received: ${receivedMatch[1]}`)
+        }
+      }
+      return parts.join('\n  ')
+    })
+    return [`resource: ${error.resourceLabel}`, '', ...lines].join('\n')
   }
   if (error instanceof ApiError) {
     const body =

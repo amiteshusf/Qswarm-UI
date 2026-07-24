@@ -1,4 +1,3 @@
-import { formatDistanceToNow } from 'date-fns'
 import { Link } from 'react-router-dom'
 
 import { useStories } from '@/api/hooks'
@@ -11,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export function TestDesignRunsPage() {
   const storiesQ = useStories()
   const runs =
-    storiesQ.data?.items.filter((s) => s.hasActiveRun && s.activeRunId) ?? []
+    storiesQ.data?.stories.filter((s) => s.hasActiveRun && s.activeRunId) ?? []
 
   return (
     <div className="space-y-8">
@@ -49,20 +48,11 @@ export function TestDesignRunsPage() {
               className="border-border/70 bg-surface-raised hover:border-swarm/35 flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors"
             >
               <div>
-                <p className="font-mono text-sm font-semibold">{story.key}</p>
+                <p className="font-mono text-sm font-semibold">{story.storyKey}</p>
                 <p className="text-sm">{story.title}</p>
               </div>
               <div className="text-right text-xs">
-                <p className="font-medium">
-                  {story.activeRunStatus?.replace(/_/g, ' ') ?? 'In progress'}
-                </p>
-                {story.updatedAt ? (
-                  <p className="text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(story.updatedAt), {
-                      addSuffix: true,
-                    })}
-                  </p>
-                ) : null}
+                <p className="font-medium">In progress</p>
               </div>
             </Link>
           ))}
