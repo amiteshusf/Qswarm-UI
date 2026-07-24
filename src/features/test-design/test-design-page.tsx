@@ -18,7 +18,7 @@ import {
   useTestDesignReviewData,
   useTestDesignRun,
 } from '@/api/hooks'
-import type { RequirementAnalysis, RequirementAnalysisSummary } from '@/api/schemas'
+import { artifactRefToRequirementAnalysis, artifactRefToTestDesignPlan } from '@/api/adapters/test-design'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisRevisionComposer } from '@/features/test-design/analysis-revision-composer'
@@ -157,18 +157,16 @@ export function TestDesignPage() {
   const analysisForPanel =
     analysisQ.data ??
     (run.requirementAnalysis
-      ? summaryToRequirementAnalysis(run.id, run.storyKey, run.requirementAnalysis)
+      ? artifactRefToRequirementAnalysis(
+          run.id,
+          run.storyKey,
+          run.requirementAnalysis,
+        )
       : null)
   const planForPanel =
     planQ.data ??
     (run.testDesignPlan
-      ? {
-          runId: run.id,
-          version: run.testDesignPlan.version ?? 1,
-          versionId: run.testDesignPlan.versionId,
-          summary: run.testDesignPlan.summary,
-          estimatedCaseCount: run.testDesignPlan.estimatedCaseCount,
-        }
+      ? artifactRefToTestDesignPlan(run.id, run.testDesignPlan)
       : null)
 
   const showAnalysis = Boolean(analysisForPanel)
@@ -327,28 +325,6 @@ export function TestDesignPage() {
       </div>
     </div>
   )
-}
-
-function summaryToRequirementAnalysis(
-  runId: string,
-  storyKey: string,
-  summary: RequirementAnalysisSummary,
-): RequirementAnalysis {
-  const readiness = summary.readinessStatus
-  const readinessStatus =
-    readiness === 'ready' ||
-    readiness === 'needs_clarification' ||
-    readiness === 'blocked'
-      ? readiness
-      : undefined
-
-  return {
-    runId,
-    storyKey,
-    storyTitle: storyKey,
-    summary: summary.summary,
-    readinessStatus,
-  }
 }
 
 function SectionHeading({

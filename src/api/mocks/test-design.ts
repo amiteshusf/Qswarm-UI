@@ -5,6 +5,10 @@ import type {
   TestDesignRun,
 } from '@/api/schemas'
 import {
+  artifactRefToRequirementAnalysis,
+  artifactRefToTestDesignPlan,
+} from '@/api/adapters/test-design'
+import {
   testDesignRunAwaitingTestCaseReviewFixture,
   testDesignRunAutomationReadyFixture,
   testDesignRunIntakeReadyFixture,
@@ -77,13 +81,18 @@ export function createMockTestDesignRun(storyKey: string): TestDesignRun {
 }
 
 function buildAnalysis(run: TestDesignRun): RequirementAnalysis {
+  if (run.requirementAnalysis) {
+    return artifactRefToRequirementAnalysis(
+      run.id,
+      run.storyKey,
+      run.requirementAnalysis,
+    )
+  }
   return {
     runId: run.id,
     storyKey: run.storyKey,
     storyTitle: run.storyKey,
-    summary:
-      run.requirementAnalysis?.summary ??
-      `Requirement analysis for ${run.storyKey}`,
+    summary: `Requirement analysis for ${run.storyKey}`,
     acceptanceCriteria: [
       {
         id: 'ac-1',
@@ -91,7 +100,13 @@ function buildAnalysis(run: TestDesignRun): RequirementAnalysis {
         covered: true,
       },
     ],
-    gaps: [{ id: 'gap-1', description: 'Threshold not specified', severity: 'medium' }],
+    gaps: [
+      {
+        id: 'gap-1',
+        description: 'Threshold not specified',
+        severity: 'medium',
+      },
+    ],
     businessRules: ['Threshold default is 5 units'],
     proposedScope: 'Cover banner visibility and content.',
     readinessStatus: 'needs_clarification',
@@ -99,12 +114,14 @@ function buildAnalysis(run: TestDesignRun): RequirementAnalysis {
 }
 
 function buildPlan(run: TestDesignRun): TestDesignPlan {
+  if (run.testDesignPlan) {
+    return artifactRefToTestDesignPlan(run.id, run.testDesignPlan)
+  }
   return {
     runId: run.id,
-    version: run.testDesignPlan?.version ?? 1,
-    versionId: run.testDesignPlan?.versionId,
-    summary: run.testDesignPlan?.summary,
-    estimatedCaseCount: run.testDesignPlan?.estimatedCaseCount,
+    version: 1,
+    summary: 'Prepared test-design plan.',
+    estimatedCaseCount: 8,
     functionalAreas: ['Inventory detail page'],
     positiveScenarios: ['Banner appears below threshold'],
     negativeScenarios: ['Banner hidden above threshold'],
@@ -115,32 +132,22 @@ function buildReviewData(run: TestDesignRun): TestDesignReviewData {
   return {
     runId: run.id,
     reviewSummary: {
-      currentVersion: run.versions[0]?.version ?? 1,
+      currentVersion: run.versions[0]?.versionNumber ?? 1,
       totalCases: run.testCaseRecords.length,
-      automationCandidateCount: run.testCaseRecords.filter(
-        (tc) => tc.automationCandidate,
-      ).length,
+      automationCandidateCount: run.testCaseRecords.length,
       nextActions: run.nextActions,
     },
     testCases: run.testCaseRecords.map((tc) => ({
       id: tc.id,
-      draftId: tc.draftId,
-      version: tc.version,
-      title: tc.title,
-      objective: tc.objective,
-      priority:
-        tc.priority === 'critical' ||
-        tc.priority === 'high' ||
-        tc.priority === 'medium' ||
-        tc.priority === 'low'
-          ? tc.priority
-          : undefined,
-      automationCandidate: tc.automationCandidate,
+      draftId: tc.registryKey,
+      version: tc.versionNumber,
+      title: tc.title ?? tc.registryKey,
+      objective: tc.objective ?? undefined,
     })),
     versions: run.versions.map((v) => ({
-      version: v.version,
-      versionId: v.versionId,
-      label: v.label,
+      version: v.versionNumber ?? v.version ?? 1,
+      versionId: v.id,
+      label: v.label ?? v.notes ?? undefined,
       createdAt: v.createdAt ?? run.updatedAt,
       caseCount: v.caseCount,
     })),
@@ -193,10 +200,4 @@ export function updateMockRun(id: string, patch: Partial<TestDesignRun>) {
     story.hasActiveRun = currentStage !== 'automation_ready'
     story.activeRunId = story.hasActiveRun ? updated.id : null
   }
-}
-
-export {
-  buildAnalysis,
-  buildPlan,
-  buildReviewData,
 }

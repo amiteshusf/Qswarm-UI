@@ -17,9 +17,9 @@ export const qk = {
   story: (key: string) => ['stories', key] as const,
   testDesignRun: (id: string) => ['test-design-runs', id] as const,
   testDesignAnalysis: (id: string) =>
-    ['test-design-runs', id, 'requirement-analysis'] as const,
+    ['test-design-runs', id, 'analysis'] as const,
   testDesignPlan: (id: string) =>
-    ['test-design-runs', id, 'test-design-plan'] as const,
+    ['test-design-runs', id, 'plan'] as const,
   testDesignReviewData: (id: string) =>
     ['test-design-runs', id, 'review-data'] as const,
   settings: ['settings'] as const,

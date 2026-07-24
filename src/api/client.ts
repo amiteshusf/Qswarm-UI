@@ -6,6 +6,14 @@ import { z } from 'zod'
  * Browser calls go to `${VITE_API_BASE_URL}${VITE_API_PATH_PREFIX ?? '/api/v1'}/...`.
  * Cross-origin deployments require backend CORS for the UI origin — see docs/CORS.md.
  */
+import { adaptJiraStoryDetail } from '@/api/adapters/stories'
+import {
+  artifactRefToRequirementAnalysis,
+  artifactRefToTestDesignPlan,
+  adaptTestDesignReviewData,
+  toAutomationBacklogItem,
+} from '@/api/adapters/test-design'
+import { backendRoutes, type RouteSpec } from '@/api/backend-route-manifest'
 import {
   ApiError,
   ConfigurationError,
@@ -13,6 +21,12 @@ import {
   SchemaResponseError,
   extractBackendMessage,
 } from '@/api/errors'
+import {
+  artifactVersionRefSchema,
+  testCaseListWireSchema,
+  testCaseRegistryRecordSchema,
+  testDesignReviewDataWireSchema,
+} from '@/api/wire-schemas'
 import {
   mockBranchPolicies,
   mockDashboard,
@@ -113,8 +127,35 @@ function url(...segments: string[]): string {
   return `${root}/${path}`
 }
 
+function hrefForRoute(
+  route: RouteSpec,
+  query?: Record<string, string | number | undefined | null>,
+): string {
+  const root = apiRootHref()
+  const suffix = route.path.replace(/^\/api\/v1/, '')
+  const base = root.endsWith('/')
+    ? `${root.slice(0, -1)}${suffix}`
+    : `${root}${suffix}`
+  if (!query) return base
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value == null || value === '') continue
+    params.set(key, String(value))
+  }
+  const qs = params.toString()
+  return qs ? `${base}?${qs}` : base
+}
+
+function actorQuery(): Record<string, string> {
+  return { actor_id: sessionActorId() }
+}
+
 /** OpenAPI session mutations expect `actorId` (default `qswarm-web` when unset). */
 function sessionMutationBody(extra?: Record<string, unknown>): string {
+  return JSON.stringify({ actorId: sessionActorId(), ...extra })
+}
+
+function workspaceMutationBody(extra: Record<string, unknown>): string {
   return JSON.stringify({ actorId: sessionActorId(), ...extra })
 }
 
@@ -133,7 +174,6 @@ function sessionCreateWireBody(parsed: SessionCreateInput): Record<string, unkno
   const wire: Record<string, unknown> = {
     repositoryConnectionId: parsed.repoConnectionId,
     engine: parsed.engine,
-    codingEngine: parsed.engine,
     sourceRef: parsed.sourceRef,
     createdBy: sessionCreatedBy,
   }
@@ -244,48 +284,15 @@ function parseRepoConnectionsListResponse(
   return Array.isArray(parsed.data) ? parsed.data : parsed.data.items
 }
 
-function parseAutomationBacklogList(data: unknown, resourceLabel: string) {
-  const listSchema = z.union([
-    automationBacklogListSchema,
-    z.object({ items: z.array(automationBacklogTestCaseSchema) }),
-    z.array(automationBacklogTestCaseSchema),
-  ])
-  const parsed = listSchema.safeParse(data)
-  if (!parsed.success) {
-    throw new SchemaResponseError(
-      `Zod validation failed for ${resourceLabel}.`,
-      parsed.error,
-      resourceLabel,
-    )
-  }
-  if (Array.isArray(parsed.data)) {
-    return { items: parsed.data, total: parsed.data.length }
-  }
-  if ('items' in parsed.data && !('total' in parsed.data)) {
-    return { items: parsed.data.items, total: parsed.data.items.length }
-  }
-  return parsed.data
-}
-
 function automateTestCaseWireBody(
-  testCaseId: string,
   parsed: AutomateTestCaseInput,
-  testCase?: { sourceReference?: string; caseId?: string; title?: string; sourceSystem?: string } | null,
 ): Record<string, unknown> {
-  const wire: Record<string, unknown> = {
-    actorId: sessionActorId(),
+  return {
     createdBy: sessionCreatedBy,
-    repositoryConnectionId: parsed.repositoryConnectionId,
     engine: parsed.engine,
-    codingEngine: parsed.engine,
-    approvedCaseId: testCaseId,
-    sourceRef:
-      testCase?.sourceReference ?? testCase?.caseId ?? testCaseId,
+    repositoryConnectionId: parsed.repositoryConnectionId,
+    baseBranch: 'main',
   }
-  if (parsed.branchPolicyId) wire.branchPolicyId = parsed.branchPolicyId
-  if (testCase?.title) wire.sourceLabel = testCase.title
-  if (testCase?.sourceSystem) wire.sourceSystem = testCase.sourceSystem
-  return wire
 }
 
 export const api = {
@@ -466,7 +473,13 @@ export const api = {
       await delay(90)
       let items = [...mockAutomationBacklog]
       if (filters?.status && filters.status !== 'all') {
-        items = items.filter((tc) => tc.automationStatus === filters.status)
+        if (filters.status === 'in_progress') {
+          items = items.filter((tc) => tc.automationStatus === 'in_progress')
+        } else if (filters.status === 'not_automated') {
+          items = items.filter((tc) => tc.automationStatus === 'not_automated')
+        } else {
+          items = items.filter((tc) => tc.automationStatus === filters.status)
+        }
       }
       if (filters?.q?.trim()) {
         const q = filters.q.trim().toLowerCase()
@@ -483,19 +496,42 @@ export const api = {
         total: items.length,
       })
     }
-    const params = new URLSearchParams()
-    if (filters?.q?.trim()) params.set('q', filters.q.trim())
-    if (filters?.status && filters.status !== 'all') {
-      params.set('status', filters.status)
+    const query: Record<string, string | undefined> = {}
+    if (filters?.status === 'not_automated') {
+      query.status = 'automation_ready'
+    } else if (
+      filters?.status &&
+      filters.status !== 'all' &&
+      filters.status !== 'in_progress'
+    ) {
+      query.status = filters.status
     }
-    const qs = params.toString() ? `?${params.toString()}` : ''
     const data = await fetchJson<unknown>(
-      `${url('test-cases', 'automation-backlog')}${qs}`,
+      hrefForRoute(backendRoutes.testCases.list(), query),
     )
-    return parseAutomationBacklogList(
+    const wire = parseWithSchema(
+      testCaseListWireSchema,
       data,
-      'GET /test-cases/automation-backlog',
+      'GET /test-cases',
     )
+    let items = wire.items.map(toAutomationBacklogItem)
+    if (filters?.status === 'in_progress') {
+      items = items.filter((item) => item.automationStatus === 'in_progress')
+    }
+    if (filters?.q?.trim()) {
+      const q = filters.q.trim().toLowerCase()
+      items = items.filter(
+        (tc) =>
+          tc.title.toLowerCase().includes(q) ||
+          tc.caseId?.toLowerCase().includes(q) ||
+          tc.storyKey?.toLowerCase().includes(q) ||
+          tc.sourceReference?.toLowerCase().includes(q),
+      )
+    }
+    return automationBacklogListSchema.parse({
+      items,
+      total: wire.total ?? items.length,
+    })
   },
 
   async getTestCase(id: string) {
@@ -505,12 +541,15 @@ export const api = {
       if (!row) throw new ApiError('Not found', 404)
       return automationBacklogTestCaseSchema.parse(row)
     }
-    const data = await fetchJson<unknown>(url('test-cases', id))
-    return parseWithSchema(
-      automationBacklogTestCaseSchema,
+    const data = await fetchJson<unknown>(
+      hrefForRoute(backendRoutes.testCases.detail(id)),
+    )
+    const wire = parseWithSchema(
+      testCaseRegistryRecordSchema,
       data,
       `GET /test-cases/${id}`,
     )
+    return automationBacklogTestCaseSchema.parse(toAutomationBacklogItem(wire))
   },
 
   async automateTestCase(id: string, input: unknown) {
@@ -555,11 +594,13 @@ export const api = {
       tc.sessionId = sessionId
       return row
     }
-    const tc = await this.getTestCase(id).catch(() => null)
-    const data = await fetchJson<unknown>(url('test-cases', id, 'automate'), {
-      method: 'POST',
-      body: JSON.stringify(automateTestCaseWireBody(id, body, tc)),
-    })
+    const data = await fetchJson<unknown>(
+      hrefForRoute(backendRoutes.testCases.automate(id)),
+      {
+        method: 'POST',
+        body: JSON.stringify(automateTestCaseWireBody(body)),
+      },
+    )
     return parseWithSchema(
       sessionDetailSchema,
       data,
@@ -756,8 +797,7 @@ export const api = {
         method: 'POST',
         body: sessionMutationBody({
           instruction: body.instruction,
-          instructionText: body.instruction,
-          ...(body.scope ? { scope: body.scope, targetScope: body.scope } : {}),
+          ...(body.scope ? { scope: body.scope } : {}),
         }),
       },
     )
@@ -824,8 +864,7 @@ export const api = {
         method: 'POST',
         body: sessionMutationBody({
           instruction: body.instruction,
-          instructionText: body.instruction,
-          ...(body.scope ? { scope: body.scope, targetScope: body.scope } : {}),
+          ...(body.scope ? { scope: body.scope } : {}),
         }),
       },
     )
@@ -892,17 +931,6 @@ export const api = {
     return parseWithSchema(settingsSchema, data, 'GET /settings')
   },
 
-  async updateSettings(patch: unknown) {
-    if (useMockData) {
-      await delay(100)
-      return settingsSchema.parse({ ...mockSettings, ...(patch as object) })
-    }
-    const data = await fetchJson<unknown>(url('settings'), {
-      method: 'PATCH',
-      body: JSON.stringify(patch),
-    })
-    return parseWithSchema(settingsSchema, data, 'PATCH /settings')
-  },
 
   // --- Sprint 1: Jira stories & test-design runs ---
 
@@ -935,15 +963,19 @@ export const api = {
         total: stories.length,
       })
     }
-    const params = new URLSearchParams()
-    if (filters?.q?.trim()) params.set('q', filters.q.trim())
-    if (filters?.project) params.set('project', filters.project)
-    if (filters?.sprint) params.set('sprint', filters.sprint)
-    if (filters?.status) params.set('status', filters.status)
-    if (filters?.readiness) params.set('readiness', filters.readiness)
-    const qs = params.toString() ? `?${params.toString()}` : ''
-    const data = await fetchJson<unknown>(`${url('stories')}${qs}`)
-    return parseWithSchema(storyListSchema, data, 'GET /stories')
+    const params: Record<string, string | undefined> = {}
+    if (filters?.q?.trim()) params.q = filters.q.trim()
+    if (filters?.project) params.projectKey = filters.project
+    if (filters?.status) params.status = filters.status
+    const data = await fetchJson<unknown>(
+      hrefForRoute(backendRoutes.stories.list(), params),
+    )
+    const parsed = parseWithSchema(storyListSchema, data, 'GET /stories')
+    if (!filters?.readiness) return parsed
+    const stories = parsed.stories.filter(
+      (story) => story.readiness === filters.readiness,
+    )
+    return { stories, total: stories.length }
   },
 
   async getStory(key: string) {
@@ -953,8 +985,10 @@ export const api = {
       if (!row) throw new ApiError('Story not found', 404)
       return jiraStorySchema.parse(row)
     }
-    const data = await fetchJson<unknown>(url('stories', key))
-    return parseWithSchema(jiraStorySchema, data, `GET /stories/${key}`)
+    const data = await fetchJson<unknown>(
+      hrefForRoute(backendRoutes.stories.detail(key)),
+    )
+    return adaptJiraStoryDetail(data)
   },
 
   async createTestDesignRun(storyKey: string) {
@@ -967,10 +1001,10 @@ export const api = {
       return testDesignRunSchema.parse(createMockTestDesignRun(storyKey))
     }
     const data = await fetchJson<unknown>(
-      url('stories', storyKey, 'test-design-runs'),
+      hrefForRoute(backendRoutes.stories.createTestDesignRun(storyKey)),
       {
         method: 'POST',
-        body: sessionMutationBody({ createdBy: sessionCreatedBy }),
+        body: JSON.stringify({ initiatedBy: sessionCreatedBy }),
       },
     )
     return parseWithSchema(
@@ -987,7 +1021,9 @@ export const api = {
       if (!row) throw new ApiError('Test-design run not found', 404)
       return testDesignRunSchema.parse(row)
     }
-    const data = await fetchJson<unknown>(url('test-design-runs', id))
+    const data = await fetchJson<unknown>(
+      hrefForRoute(backendRoutes.testDesignRuns.detail(id)),
+    )
     return parseWithSchema(
       testDesignRunSchema,
       data,
@@ -1003,12 +1039,18 @@ export const api = {
       return requirementAnalysisSchema.parse(buildMockRequirementAnalysis(run))
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'requirement-analysis'),
+      hrefForRoute(backendRoutes.testDesignRuns.analysis(runId)),
     )
-    return parseWithSchema(
-      requirementAnalysisSchema,
+    const wire = parseWithSchema(
+      artifactVersionRefSchema,
       data,
-      `GET /test-design-runs/${runId}/requirement-analysis`,
+      `GET /test-design-runs/${runId}/analysis`,
+    )
+    const storyKey = String(
+      (wire.content as Record<string, unknown>).storyKey ?? '',
+    )
+    return requirementAnalysisSchema.parse(
+      artifactRefToRequirementAnalysis(runId, storyKey, wire),
     )
   },
 
@@ -1020,12 +1062,15 @@ export const api = {
       return testDesignPlanSchema.parse(buildMockTestDesignPlan(run))
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'test-design-plan'),
+      hrefForRoute(backendRoutes.testDesignRuns.plan(runId)),
     )
-    return parseWithSchema(
-      testDesignPlanSchema,
+    const wire = parseWithSchema(
+      artifactVersionRefSchema,
       data,
-      `GET /test-design-runs/${runId}/test-design-plan`,
+      `GET /test-design-runs/${runId}/plan`,
+    )
+    return testDesignPlanSchema.parse(
+      artifactRefToTestDesignPlan(runId, wire),
     )
   },
 
@@ -1039,13 +1084,14 @@ export const api = {
       )
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'review-data'),
+      hrefForRoute(backendRoutes.testDesignRuns.reviewData(runId)),
     )
-    return parseWithSchema(
-      testDesignReviewDataSchema,
+    const wire = parseWithSchema(
+      testDesignReviewDataWireSchema,
       data,
       `GET /test-design-runs/${runId}/review-data`,
     )
+    return testDesignReviewDataSchema.parse(adaptTestDesignReviewData(wire))
   },
 
   async analyzeRequirements(runId: string) {
@@ -1057,11 +1103,15 @@ export const api = {
         currentStage: 'analysis_ready',
         nextActions: ['request_analysis_revision', 'prepare_plan'],
         requirementAnalysis: {
-          summary: `Requirement analysis for ${existing?.storyKey ?? 'story'}.`,
-          readinessStatus: 'needs_clarification',
-          storyKey: existing?.storyKey,
-          acceptanceCriteriaCount: 3,
-          gapsCount: 1,
+          version: 1,
+          artifactId: `analysis-${existing?.storyKey ?? runId}`,
+          content: {
+            storyKey: existing?.storyKey,
+            summary: `Requirement analysis for ${existing?.storyKey ?? 'story'}.`,
+            readinessStatus: 'needs_clarification',
+            acceptanceCriteriaCount: 3,
+            gapsCount: 1,
+          },
         },
       })
       const run = findMockTestDesignRun(runId)!
@@ -1069,13 +1119,13 @@ export const api = {
       return testDesignRunSchema.parse(run)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'analyze-requirements'),
-      { method: 'POST', body: sessionMutationBody() },
+      hrefForRoute(backendRoutes.testDesignRuns.analyze(runId), actorQuery()),
+      { method: 'POST' },
     )
     return parseWithSchema(
       testDesignRunSchema,
       data,
-      `POST /test-design-runs/${runId}/analyze-requirements`,
+      `POST /test-design-runs/${runId}/analyze`,
     )
   },
 
@@ -1088,9 +1138,11 @@ export const api = {
         nextActions: ['request_plan_changes', 'approve_plan'],
         testDesignPlan: {
           version: 1,
-          versionId: `plan_v1_${runId}`,
-          summary: 'Prepared test-design plan.',
-          estimatedCaseCount: 8,
+          artifactId: `plan_v1_${runId}`,
+          content: {
+            summary: 'Prepared test-design plan.',
+            estimatedCaseCount: 8,
+          },
         },
       })
       const run = findMockTestDesignRun(runId)!
@@ -1098,13 +1150,16 @@ export const api = {
       return testDesignRunSchema.parse(run)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'prepare-test-design-plan'),
-      { method: 'POST', body: sessionMutationBody() },
+      hrefForRoute(
+        backendRoutes.testDesignRuns.preparePlan(runId),
+        actorQuery(),
+      ),
+      { method: 'POST' },
     )
     return parseWithSchema(
       testDesignRunSchema,
       data,
-      `POST /test-design-runs/${runId}/prepare-test-design-plan`,
+      `POST /test-design-runs/${runId}/prepare-plan`,
     )
   },
 
@@ -1119,8 +1174,11 @@ export const api = {
       return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'approve-plan'),
-      { method: 'POST', body: sessionMutationBody() },
+      hrefForRoute(
+        backendRoutes.testDesignRuns.approvePlan(runId),
+        actorQuery(),
+      ),
+      { method: 'POST' },
     )
     return parseWithSchema(
       testDesignRunSchema,
@@ -1147,14 +1205,12 @@ export const api = {
       return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'request-plan-revision'),
+      hrefForRoute(backendRoutes.testDesignRuns.requestPlanRevision(runId)),
       {
         method: 'POST',
-        body: sessionMutationBody({
+        body: workspaceMutationBody({
           instruction: body.instruction,
-          instructionText: body.instruction,
           ...(body.scope ? { scope: body.scope } : {}),
-          ...(body.focusArea ? { focusArea: body.focusArea } : {}),
         }),
       },
     )
@@ -1172,15 +1228,21 @@ export const api = {
         status: 'active',
         currentStage: 'awaiting_test_case_review',
         nextActions: ['request_test_case_changes', 'approve_test_design'],
-        versions: [{ version: 1, label: 'Initial generation', caseCount: 3 }],
+        versions: [
+          {
+            id: 'ver-1',
+            versionNumber: 1,
+            label: 'Initial generation',
+            caseCount: 3,
+          },
+        ],
         testCaseRecords: [
           {
             id: `tc_${runId}_1`,
-            draftId: 'TC-D-001',
+            registryKey: 'TC-D-001',
+            workflowRunId: runId,
+            sourceStoryKey: findMockTestDesignRun(runId)?.storyKey ?? 'NSP-696',
             title: 'Generated test case',
-            priority: 'high',
-            automationCandidate: true,
-            version: 1,
           },
         ],
       })
@@ -1192,8 +1254,11 @@ export const api = {
       return testDesignRunSchema.parse(run)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'generate-test-cases'),
-      { method: 'POST', body: sessionMutationBody() },
+      hrefForRoute(
+        backendRoutes.testDesignRuns.generateTestCases(runId),
+        actorQuery(),
+      ),
+      { method: 'POST' },
     )
     return parseWithSchema(
       testDesignRunSchema,
@@ -1207,7 +1272,7 @@ export const api = {
     if (useMockData) {
       await delay(200)
       const run = findMockTestDesignRun(runId)!
-      const nextVersion = (run.versions[0]?.version ?? 1) + 1
+      const nextVersion = (run.versions[0]?.versionNumber ?? 1) + 1
       updateMockRun(runId, {
         status: 'active',
         currentStage: 'revising_test_cases',
@@ -1220,7 +1285,12 @@ export const api = {
         nextActions: ['request_test_case_changes', 'approve_test_design'],
         versions: [
           ...(run.versions ?? []),
-          { version: nextVersion, label: `Revision ${nextVersion - 1}`, caseCount: 3 },
+          {
+            id: `ver-${nextVersion}`,
+            versionNumber: nextVersion,
+            label: `Revision ${nextVersion - 1}`,
+            caseCount: 3,
+          },
         ],
       })
       const updated = findMockTestDesignRun(runId)!
@@ -1246,21 +1316,19 @@ export const api = {
       return testDesignRunSchema.parse(updated)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'request-test-case-revision'),
+      hrefForRoute(backendRoutes.testDesignRuns.requestRevision(runId)),
       {
         method: 'POST',
-        body: sessionMutationBody({
+        body: workspaceMutationBody({
           instruction: body.instruction,
-          instructionText: body.instruction,
           ...(body.scope ? { scope: body.scope } : {}),
-          ...(body.focusArea ? { focusArea: body.focusArea } : {}),
         }),
       },
     )
     return parseWithSchema(
       testDesignRunSchema,
       data,
-      `POST /test-design-runs/${runId}/request-test-case-revision`,
+      `POST /test-design-runs/${runId}/request-revision`,
     )
   },
 
@@ -1276,8 +1344,8 @@ export const api = {
       return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'approve'),
-      { method: 'POST', body: sessionMutationBody() },
+      hrefForRoute(backendRoutes.testDesignRuns.approve(runId)),
+      { method: 'POST', body: workspaceMutationBody({}) },
     )
     return parseWithSchema(
       testDesignRunSchema,
@@ -1303,8 +1371,8 @@ export const api = {
       return testDesignRunSchema.parse(run)
     }
     const data = await fetchJson<unknown>(
-      url('test-design-runs', runId, 'publish'),
-      { method: 'POST', body: sessionMutationBody() },
+      hrefForRoute(backendRoutes.testDesignRuns.publish(runId), actorQuery()),
+      { method: 'POST' },
     )
     return parseWithSchema(
       testDesignRunSchema,

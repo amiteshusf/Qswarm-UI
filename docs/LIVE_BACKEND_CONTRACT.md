@@ -1,6 +1,10 @@
 # Live backend contract (inspected)
 
-Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (June 2026). Use this alongside `src/api/schemas.ts` when aligning the UI.
+Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`**.  
+**Authoritative OpenAPI:** `reference/backend/docs/openapi-ui-v1.json` (synced 2026-07-24).  
+**Frontend route manifest:** `src/api/backend-route-manifest.ts`  
+**Compatibility report:** `docs/FRONTEND_API_COMPATIBILITY_REPORT.md`  
+**Contract fixtures:** `src/api/contract-fixtures/`
 
 ## Conventions
 
@@ -60,7 +64,8 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 ## `GET /api/v1/stories`
 
-- **Query:** optional `q`, `project`, `sprint`, `status`, `readiness` (`ready` | `partial` | `missing_ac`)
+- **Query:** `projectKey`, `status`, `q`, `limit` (OpenAPI)
+- **Client-side only:** `readiness` filter applied after fetch when the UI requests it
 - **Response:**
 
 ```json
@@ -94,7 +99,7 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 ## `POST /api/v1/stories/{key}/test-design-runs`
 
-- **Body:** `{ actorId, createdBy }`
+- **Body:** `{ initiatedBy }` (default `qswarm-web`)
 - **Response:** `testDesignRunSchema` — opens existing run if one is active for the story
 
 ## `GET /api/v1/test-design-runs/{id}`
@@ -139,38 +144,39 @@ Example `intake_ready` response:
 }
 ```
 
-## `GET /api/v1/test-design-runs/{id}/requirement-analysis`
+## `GET /api/v1/test-design-runs/{id}/analysis`
 
-- **Response:** analysis with `acceptanceCriteria[]`, `gaps[]`, `businessRules[]`, `readinessStatus`
+- **Response:** `UiArtifactVersionRef` (`version`, `artifactId`, `content`)
 
-## `GET /api/v1/test-design-runs/{id}/test-design-plan`
+## `GET /api/v1/test-design-runs/{id}/plan`
 
-- **Response:** plan with `functionalAreas`, scenarios, `traceability[]`, `estimatedCaseCount`
+- **Response:** `UiArtifactVersionRef`
 
 ## `GET /api/v1/test-design-runs/{id}/review-data`
 
-- **Response:** `testCases[]`, `versions[]`, `reviewConversation[]`, `publicationResult`
+- **Response wire:** `workflowRunId`, `reviewSummary`, `testCases[]`, `conversation[]`, `versions[]`, `publication`
+- **UI adapter:** `adaptTestDesignReviewData()` in `src/api/adapters/test-design.ts`
 
-## Sprint 1 mutations (`POST`, body includes `actorId`)
+## Sprint 1 mutations
 
-| Path | Purpose |
-|------|---------|
-| `/test-design-runs/{id}/analyze-requirements` | Run requirement analysis |
-| `/test-design-runs/{id}/prepare-test-design-plan` | Prepare test-design plan |
-| `/test-design-runs/{id}/approve-plan` | Approve plan |
-| `/test-design-runs/{id}/request-plan-revision` | `instruction`, optional `scope`, `focusArea` |
-| `/test-design-runs/{id}/generate-test-cases` | Generate cases from approved plan |
-| `/test-design-runs/{id}/request-test-case-revision` | Conversational case revision |
-| `/test-design-runs/{id}/approve` | Approve test design |
-| `/test-design-runs/{id}/publish` | Publish to Jira/TestRail |
+| Path | Body / query |
+|------|----------------|
+| `POST .../analyze` | `actor_id` query (no body) |
+| `POST .../prepare-plan` | `actor_id` query |
+| `POST .../approve-plan` | `actor_id` query |
+| `POST .../request-plan-revision` | `{ actorId, instruction, scope? }` |
+| `POST .../generate-test-cases` | `actor_id` query |
+| `POST .../request-revision` | `{ actorId, instruction, scope? }` |
+| `POST .../approve` | `{ actorId, notes? }` |
+| `POST .../publish` | `actor_id` query |
 
 **Example `nextActions`:** `analyze_requirements`, `prepare_test_design_plan`, `request_analysis_revision`, `approve_plan`, `request_plan_changes`, `generate_test_cases`, `request_test_case_changes`, `approve_test_design`, `publish_test_cases`, `open_automation_backlog`
 
-## `GET /api/v1/test-cases/automation-backlog`
+## `GET /api/v1/test-cases`
 
-- **Shape:** `{ items: AutomationBacklogTestCase[], total? }` or top-level array
-- **Query:** optional `q` (search), `status` (`not_automated`, `in_progress`, `automated`, `failed`)
-- **Item fields:** `id`, `caseId`, `title`, `sourceSystem`, `sourceReference`, `storyKey`, `storyTitle`, `automationStatus`, `targetArea`, `repoConnectionId`, `sessionId`, `objective`, `stepsPreview`, timestamps
+- **Shape:** `{ items: UiTestCaseRecord[], total? }`
+- **Query:** `status` (e.g. `automation_ready`), `workflowRunId`, `sourceStoryKey`, `limit`
+- **UI:** Automation Backlog page; `not_automated` tab maps to `status=automation_ready`
 
 ## `GET /api/v1/test-cases/{id}`
 
@@ -178,7 +184,7 @@ Example `intake_ready` response:
 
 ## `POST /api/v1/test-cases/{id}/automate`
 
-- **Body:** `{ actorId, createdBy, repositoryConnectionId, branchPolicyId?, engine, codingEngine? }`
+- **Body:** `{ createdBy, engine, repositoryConnectionId, baseBranch? }` (`UiTestCaseAutomate`)
 - **Response:** `sessionDetailSchema` — opens the plan-first session flow for that test case
 
 ## `GET /api/v1/sessions/{id}/brief`

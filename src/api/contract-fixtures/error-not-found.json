@@ -1,0 +1,7 @@
+{
+  "detail": {
+    "code": "not_found",
+    "message": "Workflow run not found",
+    "field": null
+  }
+}

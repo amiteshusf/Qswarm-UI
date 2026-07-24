@@ -2,13 +2,22 @@ import type { TestDesignRun } from '@/api/schemas'
 
 const BASE_TS = '2026-07-24T12:22:13.387184+00:00'
 
+function artifactRef(
+  version: number,
+  artifactId: string,
+  content: Record<string, unknown>,
+) {
+  return { version, artifactId, content }
+}
+
 function baseRun(
   patch: Partial<TestDesignRun> & Pick<TestDesignRun, 'id' | 'currentStage' | 'nextActions'>,
 ): TestDesignRun {
   const stage = patch.currentStage
+  const storyKey = patch.storyKey ?? 'NSP-696'
   return {
     id: patch.id,
-    storyKey: patch.storyKey ?? 'NSP-696',
+    storyKey,
     workflowName: 'sprint1_qswarm_workspace',
     status: patch.status ?? 'pending',
     currentStep: patch.currentStep ?? stage,
@@ -19,7 +28,7 @@ function baseRun(
     createdAt: patch.createdAt ?? BASE_TS,
     updatedAt: patch.updatedAt ?? BASE_TS,
     sourceStory: patch.sourceStory ?? {
-      storyKey: patch.storyKey ?? 'NSP-696',
+      storyKey,
       intakeArtifactId: '7995e03e-0881-4027-9650-ddabe2540da0',
     },
     requirementAnalysis: patch.requirementAnalysis ?? null,
@@ -36,6 +45,46 @@ function baseRun(
   }
 }
 
+function analysisRef(storyKey: string, extra?: Record<string, unknown>) {
+  return artifactRef(1, `analysis-${storyKey}`, {
+    storyKey,
+    summary: `Requirement analysis complete for ${storyKey}.`,
+    readinessStatus: 'needs_clarification',
+    acceptanceCriteriaCount: 3,
+    gapsCount: 1,
+    gaps: [{ id: 'gap-1', description: 'Missing edge-case AC', severity: 'medium' }],
+    ...extra,
+  })
+}
+
+function planRef(storyKey: string, extra?: Record<string, unknown>) {
+  return artifactRef(1, `plan-${storyKey}`, {
+    summary: 'Prepared test-design plan.',
+    estimatedCaseCount: 8,
+    functionalAreas: ['Banner visibility', 'Threshold rules'],
+    ...extra,
+  })
+}
+
+function caseRecord(
+  runId: string,
+  patch: {
+    id: string
+    registryKey: string
+    title: string
+    storyKey?: string
+  },
+) {
+  return {
+    id: patch.id,
+    registryKey: patch.registryKey,
+    workflowRunId: runId,
+    sourceStoryKey: patch.storyKey ?? 'NSP-696',
+    title: patch.title,
+    automationStatus: 'draft',
+  }
+}
+
 export const testDesignRunIntakeReadyFixture = baseRun({
   id: '38d476a7-8294-4acd-909b-36de472f18d0',
   currentStage: 'intake_ready',
@@ -47,13 +96,7 @@ export const testDesignRunAnalysisReadyFixture = baseRun({
   currentStage: 'analysis_ready',
   status: 'active',
   nextActions: ['prepare_plan'],
-  requirementAnalysis: {
-    summary: 'Requirement analysis complete for NSP-696.',
-    readinessStatus: 'needs_clarification',
-    storyKey: 'NSP-696',
-    acceptanceCriteriaCount: 3,
-    gapsCount: 1,
-  },
+  requirementAnalysis: analysisRef('NSP-696'),
 })
 
 export const testDesignRunAwaitingPlanApprovalFixture = baseRun({
@@ -61,19 +104,12 @@ export const testDesignRunAwaitingPlanApprovalFixture = baseRun({
   currentStage: 'awaiting_plan_approval',
   status: 'active',
   nextActions: ['request_plan_changes', 'approve_plan'],
-  requirementAnalysis: {
-    summary: 'Requirement analysis complete.',
+  requirementAnalysis: analysisRef('NSP-696', {
     readinessStatus: 'ready',
-    storyKey: 'NSP-696',
-    acceptanceCriteriaCount: 3,
     gapsCount: 0,
-  },
-  testDesignPlan: {
-    version: 1,
-    versionId: 'plan_v1',
-    summary: 'Eight functional cases covering banner visibility and content.',
-    estimatedCaseCount: 8,
-  },
+    gaps: [],
+  }),
+  testDesignPlan: planRef('NSP-696'),
 })
 
 export const testDesignRunPlanApprovedFixture = baseRun({
@@ -81,16 +117,8 @@ export const testDesignRunPlanApprovedFixture = baseRun({
   currentStage: 'plan_approved',
   status: 'active',
   nextActions: ['generate_test_cases'],
-  requirementAnalysis: {
-    summary: 'Requirement analysis complete.',
-    readinessStatus: 'ready',
-    storyKey: 'NSP-696',
-  },
-  testDesignPlan: {
-    version: 1,
-    summary: 'Approved plan for NSP-696.',
-    estimatedCaseCount: 8,
-  },
+  requirementAnalysis: analysisRef('NSP-696', { readinessStatus: 'ready' }),
+  testDesignPlan: planRef('NSP-696', { summary: 'Approved plan for NSP-696.' }),
 })
 
 export const testDesignRunAwaitingTestCaseReviewFixture = baseRun({
@@ -98,20 +126,23 @@ export const testDesignRunAwaitingTestCaseReviewFixture = baseRun({
   currentStage: 'awaiting_test_case_review',
   status: 'active',
   nextActions: ['request_test_case_changes', 'approve_test_design'],
-  requirementAnalysis: { summary: 'Analysis', storyKey: 'NSP-696' },
-  testDesignPlan: { version: 1, summary: 'Plan', estimatedCaseCount: 3 },
+  requirementAnalysis: analysisRef('NSP-696'),
+  testDesignPlan: planRef('NSP-696', { estimatedCaseCount: 3 }),
   versions: [
-    { version: 1, label: 'Initial generation', createdAt: BASE_TS, caseCount: 3 },
+    {
+      id: 'ver-1',
+      versionNumber: 1,
+      label: 'Initial generation',
+      createdAt: BASE_TS,
+      caseCount: 3,
+    },
   ],
   testCaseRecords: [
-    {
+    caseRecord('d4e5f6a7-b8c9-4123-9def-234567890123', {
       id: 'tc-1',
-      draftId: 'TC-D-001',
+      registryKey: 'TC-D-001',
       title: 'Low-stock banner appears below threshold',
-      priority: 'high',
-      automationCandidate: true,
-      version: 1,
-    },
+    }),
   ],
 })
 
@@ -120,16 +151,15 @@ export const testDesignRunApprovedFixture = baseRun({
   currentStage: 'approved',
   status: 'active',
   nextActions: ['publish_test_cases'],
-  requirementAnalysis: { summary: 'Analysis', storyKey: 'NSP-696' },
-  testDesignPlan: { version: 1, summary: 'Plan', estimatedCaseCount: 3 },
-  versions: [{ version: 1, caseCount: 3 }],
+  requirementAnalysis: analysisRef('NSP-696'),
+  testDesignPlan: planRef('NSP-696', { estimatedCaseCount: 3 }),
+  versions: [{ id: 'ver-1', versionNumber: 1, caseCount: 3 }],
   testCaseRecords: [
-    {
+    caseRecord('e5f6a7b8-c9d0-4123-aef0-345678901234', {
       id: 'tc-1',
-      draftId: 'TC-D-001',
+      registryKey: 'TC-D-001',
       title: 'Low-stock banner appears below threshold',
-      version: 1,
-    },
+    }),
   ],
   approvalId: 'approval-1',
 })
@@ -139,25 +169,22 @@ export const testDesignRunAutomationReadyFixture = baseRun({
   currentStage: 'automation_ready',
   status: 'completed',
   nextActions: ['open_automation_backlog'],
-  requirementAnalysis: { summary: 'Analysis', storyKey: 'NSP-696' },
-  testDesignPlan: { version: 1, summary: 'Plan', estimatedCaseCount: 3 },
-  versions: [{ version: 1, caseCount: 3 }],
+  requirementAnalysis: analysisRef('NSP-696'),
+  testDesignPlan: planRef('NSP-696', { estimatedCaseCount: 3 }),
+  versions: [{ id: 'ver-1', versionNumber: 1, caseCount: 3 }],
   testCaseRecords: [
-    {
+    caseRecord('f6a7b8c9-d0e1-4123-bf01-456789012345', {
       id: 'tc-1',
-      draftId: 'TC-D-001',
+      registryKey: 'TC-D-001',
       title: 'Published case',
-      version: 1,
-    },
+    }),
   ],
   automationReadyTestCases: [
-    {
+    caseRecord('f6a7b8c9-d0e1-4123-bf01-456789012345', {
       id: 'tc-1',
-      draftId: 'TC-D-001',
+      registryKey: 'TC-D-001',
       title: 'Published case',
-      automationCandidate: true,
-      version: 1,
-    },
+    }),
   ],
   approvalId: 'approval-1',
 })
@@ -167,10 +194,15 @@ export const testDesignRunLegacyFixture = baseRun({
   currentStage: 'legacy_awaiting_approval',
   status: 'active',
   nextActions: ['approve_test_design'],
-  requirementAnalysis: { summary: 'Legacy analysis', storyKey: 'LEG-1' },
-  testDesignPlan: { version: 1, summary: 'Legacy plan' },
+  requirementAnalysis: analysisRef('LEG-1', { summary: 'Legacy analysis' }),
+  testDesignPlan: planRef('LEG-1', { summary: 'Legacy plan' }),
   testCaseRecords: [
-    { id: 'legacy-1', title: 'Legacy test case', version: 1 },
+    caseRecord('a7b8c9d0-e1f2-4123-8f01-567890123456', {
+      id: 'legacy-1',
+      registryKey: 'LEG-TC-1',
+      title: 'Legacy test case',
+      storyKey: 'LEG-1',
+    }),
   ],
 })
 

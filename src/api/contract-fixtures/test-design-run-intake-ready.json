@@ -1,0 +1,30 @@
+{
+  "id": "38d476a7-8294-4acd-909b-36de472f18d0",
+  "storyKey": "NSP-696",
+  "workflowName": "sprint1_qswarm_workspace",
+  "status": "pending",
+  "currentStep": "intake_ready",
+  "currentStage": "intake_ready",
+  "nextActions": [
+    "analyze_requirements"
+  ],
+  "blockedReason": null,
+  "initiatedBy": "qswarm-web",
+  "createdAt": "2026-07-24T12:22:13.387184+00:00",
+  "updatedAt": "2026-07-24T12:22:13.387184+00:00",
+  "sourceStory": {
+    "storyKey": "NSP-696",
+    "intakeArtifactId": "7995e03e-0881-4027-9650-ddabe2540da0"
+  },
+  "requirementAnalysis": null,
+  "testDesignPlan": null,
+  "versions": [],
+  "reviewIssue": null,
+  "testCaseRecords": [],
+  "automationReadyTestCases": [],
+  "approvalId": null,
+  "productWorkspace": {
+    "mode": "qswarm_first",
+    "stage": "intake_ready"
+  }
+}

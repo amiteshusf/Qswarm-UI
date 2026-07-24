@@ -671,33 +671,38 @@ export const testDesignPlanSummarySchema = z.object({
 })
 
 export const reviewIssueSchema = z.object({
-  id: z.string(),
-  status: z.string(),
-  summary: z.string().optional(),
-  instruction: z.string().optional(),
-  scope: z.string().optional(),
+  reviewJiraIssueKey: z.string().nullable().optional(),
+  publishStatus: z.string().nullable().optional(),
 })
 
 export const testCaseRecordSchema = z.object({
   id: z.string(),
-  recordId: z.string().optional(),
-  draftId: z.string().optional(),
-  title: z.string(),
-  objective: z.string().optional(),
-  priority: z.string().optional(),
-  caseType: z.string().optional(),
-  automationCandidate: z.boolean().optional(),
-  version: z.coerce.number().optional(),
-  linkedAcceptanceCriteria: z.array(z.string()).optional(),
+  registryKey: z.string(),
+  workflowRunId: z.string(),
+  sourceStoryKey: z.string(),
+  sourceSystem: z.string().nullable().optional(),
+  externalId: z.string().nullable().optional(),
+  externalUrl: z.string().nullable().optional(),
+  title: z.string().nullable().optional(),
+  objective: z.string().nullable().optional(),
+  caseType: z.string().nullable().optional(),
+  automationStatus: z.string().nullable().optional(),
+  automationSessionId: z.string().nullable().optional(),
+  versionNumber: z.coerce.number().optional(),
 })
 
 export const testDesignRunVersionSchema = z.object({
   id: z.string().optional(),
-  version: z.coerce.number(),
-  versionId: z.string().optional(),
-  label: z.string().optional(),
+  artifactId: z.string().optional(),
+  versionNumber: z.coerce.number().optional(),
+  version: z.coerce.number().optional(),
+  parentVersionId: z.string().nullable().optional(),
+  versionAction: z.string().nullable().optional(),
+  isCurrent: z.boolean().optional(),
   createdAt: z.string().optional(),
+  notes: z.string().nullable().optional(),
   caseCount: z.coerce.number().optional(),
+  label: z.string().optional(),
 })
 
 export const testDesignRunSchema = z.object({
@@ -713,8 +718,28 @@ export const testDesignRunSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   sourceStory: testDesignSourceStorySchema,
-  requirementAnalysis: requirementAnalysisSummarySchema.nullable(),
-  testDesignPlan: testDesignPlanSummarySchema.nullable(),
+  requirementAnalysis: z
+    .object({
+      version: z.coerce.number(),
+      artifactId: z.string(),
+      content: z.record(z.string(), z.unknown()),
+      createdAt: z.string().nullable().optional(),
+      planApproved: z.boolean().nullable().optional(),
+      planApprovedAt: z.string().nullable().optional(),
+      planApprovedBy: z.string().nullable().optional(),
+    })
+    .nullable(),
+  testDesignPlan: z
+    .object({
+      version: z.coerce.number(),
+      artifactId: z.string(),
+      content: z.record(z.string(), z.unknown()),
+      createdAt: z.string().nullable().optional(),
+      planApproved: z.boolean().nullable().optional(),
+      planApprovedAt: z.string().nullable().optional(),
+      planApprovedBy: z.string().nullable().optional(),
+    })
+    .nullable(),
   reviewIssue: reviewIssueSchema.nullable(),
   versions: z.array(testDesignRunVersionSchema),
   testCaseRecords: z.array(testCaseRecordSchema),

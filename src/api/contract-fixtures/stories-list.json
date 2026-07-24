@@ -1,0 +1,39 @@
+{
+  "stories": [
+    {
+      "storyKey": "IIS-261",
+      "title": "Snowflake SaaS – integration/UAT",
+      "description": "Testing with app owner (Owner:\n+ Kimberley See) – Execute smoke testing and validate role visibility and access review readiness with Kimberley See.",
+      "status": "In Flight",
+      "sprint": null,
+      "projectKey": "IIS",
+      "assignee": "Mark Dawood",
+      "readiness": "partial",
+      "acceptanceCriteriaStatus": "partial",
+      "missingInformation": [
+        "Few explicit acceptance criteria were found"
+      ],
+      "hasActiveRun": false,
+      "activeRunId": null,
+      "jiraUrl": "https://usfoods.atlassian.net/browse/IIS-261"
+    },
+    {
+      "storyKey": "UCGE-2661",
+      "title": "Workfront Access Request",
+      "description": "Kayla Fulton is looking for her user/email to be changed to\nkfulton@supplylogic.com\n. There is some suggestion that the way to handle this is to deactivate (not delete) her current user, add a new one with the correct email, and bulk reassign the work from the old profile. Praveen to look into the best way forward.",
+      "status": "Open",
+      "sprint": null,
+      "projectKey": "UCGE",
+      "assignee": "Praveen Pasham",
+      "readiness": "partial",
+      "acceptanceCriteriaStatus": "partial",
+      "missingInformation": [
+        "Few explicit acceptance criteria were found"
+      ],
+      "hasActiveRun": false,
+      "activeRunId": null,
+      "jiraUrl": "https://usfoods.atlassian.net/browse/UCGE-2661"
+    }
+  ],
+  "total": 2
+}
