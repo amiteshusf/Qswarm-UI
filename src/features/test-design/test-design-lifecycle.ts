@@ -1,4 +1,4 @@
-import type { TestDesignRunStatus } from '@/api/schemas'
+import type { TestDesignCurrentStage } from '@/api/schemas'
 
 export type TestDesignStage =
   | 'intake'
@@ -12,36 +12,45 @@ export type TestDesignStage =
   | 'revising'
   | 'approval'
   | 'publishing'
-  | 'published'
+  | 'automation_ready'
+  | 'completed'
+  | 'legacy_approval'
   | 'failed'
 
 export type TestDesignContext = {
-  status: TestDesignRunStatus
-  workflowStatus?: string
-  planApproved?: boolean
-  analysisReady?: boolean
-  casesGenerated?: boolean
-  nextActions?: string[]
+  status: string
+  currentStep: string
+  currentStage: TestDesignCurrentStage
+  nextActions: string[]
+  blockedReason?: string | null
+  productWorkspace?: { mode: string; stage: string }
+}
+
+const STAGE_FROM_CURRENT: Record<TestDesignCurrentStage, TestDesignStage> = {
+  intake_ready: 'intake',
+  analyzing_requirements: 'analyzing',
+  analysis_ready: 'analysis_review',
+  preparing_test_design_plan: 'plan_preparing',
+  awaiting_plan_approval: 'plan_review',
+  plan_revision_requested: 'plan_review',
+  plan_approved: 'plan_approved',
+  generating_test_cases: 'generating',
+  awaiting_test_case_review: 'case_review',
+  revising_test_cases: 'revising',
+  approved: 'approval',
+  publishing: 'publishing',
+  automation_ready: 'automation_ready',
+  completed: 'completed',
+  legacy_awaiting_approval: 'legacy_approval',
 }
 
 export function getTestDesignStage(ctx: TestDesignContext): TestDesignStage {
-  if (ctx.status === 'failed') return 'failed'
-  if (ctx.status === 'published') return 'published'
-  if (ctx.status === 'publishing') return 'publishing'
-  if (ctx.status === 'approved') return 'approval'
-  if (ctx.status === 'revising') return 'revising'
-  if (ctx.status === 'cases_ready') return 'case_review'
-  if (ctx.status === 'generating') return 'generating'
-  if (ctx.status === 'plan_approved') return 'plan_approved'
-  if (ctx.status === 'plan_ready') return 'plan_review'
-  if (ctx.status === 'plan_preparing') return 'plan_preparing'
-  if (ctx.status === 'analysis_ready') return 'analysis_review'
-  if (ctx.status === 'analyzing') return 'analyzing'
-  return 'intake'
+  if (ctx.blockedReason) return 'failed'
+  return STAGE_FROM_CURRENT[ctx.currentStage] ?? 'intake'
 }
 
 const STAGE_LABELS: Record<TestDesignStage, string> = {
-  intake: 'Not started',
+  intake: 'Intake',
   analyzing: 'Analyzing requirements',
   analysis_review: 'Requirement analysis',
   plan_preparing: 'Preparing plan',
@@ -52,8 +61,10 @@ const STAGE_LABELS: Record<TestDesignStage, string> = {
   revising: 'Applying feedback',
   approval: 'Ready for approval',
   publishing: 'Publishing',
-  published: 'Published',
-  failed: 'Needs attention',
+  automation_ready: 'Ready for automation',
+  completed: 'Completed',
+  legacy_approval: 'Legacy approval',
+  failed: 'Blocked',
 }
 
 export function getTestDesignStatusLabel(ctx: TestDesignContext): string {
@@ -80,13 +91,18 @@ const STAGE_SUMMARIES: Record<TestDesignStage, string> = {
   approval:
     'Review the summary and approve the test design before publishing.',
   publishing: 'Publishing test cases to your connected test management system.',
-  published:
+  automation_ready:
     'Test cases are published. Open the Automation Backlog to start automating.',
+  completed: 'This test-design run is complete.',
+  legacy_approval: 'Review and approve the legacy test design output.',
   failed:
-    'Something went wrong. Review details below or start a new test-design run.',
+    'This run is blocked. Review the blocked reason or contact your platform team.',
 }
 
 export function getTestDesignHeroSummary(ctx: TestDesignContext): string {
+  if (ctx.blockedReason) {
+    return ctx.blockedReason
+  }
   return STAGE_SUMMARIES[getTestDesignStage(ctx)]
 }
 
@@ -114,14 +130,16 @@ export function testDesignWorkflowStepIndex(ctx: TestDesignContext): number {
       return 2
     case 'case_review':
     case 'revising':
+    case 'legacy_approval':
       return 3
     case 'approval':
       return 4
     case 'publishing':
-    case 'published':
+    case 'automation_ready':
+    case 'completed':
       return 5
     case 'failed':
-      return 3
+      return 0
     default:
       return 0
   }
@@ -147,7 +165,11 @@ export function isPlanPhase(ctx: TestDesignContext): boolean {
 
 export function isCaseReviewPhase(ctx: TestDesignContext): boolean {
   const stage = getTestDesignStage(ctx)
-  return stage === 'case_review' || stage === 'revising'
+  return (
+    stage === 'case_review' ||
+    stage === 'revising' ||
+    stage === 'legacy_approval'
+  )
 }
 
 export function isApprovalPhase(ctx: TestDesignContext): boolean {
@@ -156,5 +178,13 @@ export function isApprovalPhase(ctx: TestDesignContext): boolean {
 
 export function isPublicationPhase(ctx: TestDesignContext): boolean {
   const stage = getTestDesignStage(ctx)
-  return stage === 'publishing' || stage === 'published'
+  return (
+    stage === 'publishing' ||
+    stage === 'automation_ready' ||
+    stage === 'completed'
+  )
+}
+
+export function isIntakeReady(ctx: TestDesignContext): boolean {
+  return ctx.currentStage === 'intake_ready'
 }

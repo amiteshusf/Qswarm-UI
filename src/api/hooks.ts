@@ -313,27 +313,33 @@ export function useTestDesignRun(id: string | undefined) {
   })
 }
 
-export function useRequirementAnalysis(runId: string | undefined) {
+export function useRequirementAnalysis(
+  runId: string | undefined,
+  enabled = true,
+) {
   return useQuery({
     queryKey: qk.testDesignAnalysis(runId ?? ''),
     queryFn: () => api.getRequirementAnalysis(runId!),
-    enabled: Boolean(runId),
+    enabled: Boolean(runId) && enabled,
   })
 }
 
-export function useTestDesignPlan(runId: string | undefined) {
+export function useTestDesignPlan(runId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: qk.testDesignPlan(runId ?? ''),
     queryFn: () => api.getTestDesignPlan(runId!),
-    enabled: Boolean(runId),
+    enabled: Boolean(runId) && enabled,
   })
 }
 
-export function useTestDesignReviewData(runId: string | undefined) {
+export function useTestDesignReviewData(
+  runId: string | undefined,
+  enabled = true,
+) {
   return useQuery({
     queryKey: qk.testDesignReviewData(runId ?? ''),
     queryFn: () => api.getTestDesignReviewData(runId!),
-    enabled: Boolean(runId),
+    enabled: Boolean(runId) && enabled,
   })
 }
 

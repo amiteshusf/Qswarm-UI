@@ -13,10 +13,12 @@ import {
   useRequestTestCaseRevision,
   useRequestTestDesignPlanRevision,
   useRequirementAnalysis,
+  useStory,
   useTestDesignPlan,
   useTestDesignReviewData,
   useTestDesignRun,
 } from '@/api/hooks'
+import type { RequirementAnalysis, RequirementAnalysisSummary } from '@/api/schemas'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnalysisRevisionComposer } from '@/features/test-design/analysis-revision-composer'
@@ -32,16 +34,13 @@ import { TestDesignPlanRevisionComposer } from '@/features/test-design/test-desi
 import {
   buildTestDesignContext,
   isTestDesignActionAllowed,
-  testDesignActionHints,
   type TestDesignPrimaryAction,
 } from '@/features/test-design/test-design-actions'
 import { TestDesignWorkflowStrip } from '@/features/test-design/test-design-workflow-strip'
 import {
   getTestDesignStatusLabel,
-  isAnalysisPhase,
   isApprovalPhase,
-  isCaseReviewPhase,
-  isPlanPhase,
+  isIntakeReady,
   isPublicationPhase,
 } from '@/features/test-design/test-design-lifecycle'
 
@@ -49,9 +48,16 @@ export function TestDesignPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const runQ = useTestDesignRun(id)
-  const analysisQ = useRequirementAnalysis(id)
-  const planQ = useTestDesignPlan(id)
-  const reviewQ = useTestDesignReviewData(id)
+  const run = runQ.data
+
+  const fetchAnalysis = Boolean(run?.requirementAnalysis)
+  const fetchPlan = Boolean(run?.testDesignPlan)
+  const fetchReview = run ? run.testCaseRecords.length > 0 : false
+
+  const analysisQ = useRequirementAnalysis(id, fetchAnalysis)
+  const planQ = useTestDesignPlan(id, fetchPlan)
+  const reviewQ = useTestDesignReviewData(id, fetchReview)
+  const storyQ = useStory(run?.storyKey)
 
   const analyze = useAnalyzeRequirements(id ?? '')
   const preparePlan = usePrepareTestDesignPlan(id ?? '')
@@ -67,7 +73,6 @@ export function TestDesignPage() {
   const [caseInstruction, setCaseInstruction] = useState('')
   const [viewVersion, setViewVersion] = useState<number | undefined>()
 
-  const run = runQ.data
   const pending =
     analyze.isPending ||
     preparePlan.isPending ||
@@ -91,7 +96,7 @@ export function TestDesignPage() {
           await analyze.mutateAsync()
           toast.success('Requirement analysis ready')
           break
-        case 'prepare_test_design_plan':
+        case 'prepare_plan':
           await preparePlan.mutateAsync()
           toast.success('Test-design plan ready')
           break
@@ -149,15 +154,26 @@ export function TestDesignPage() {
   }
 
   const ctx = buildTestDesignContext(run)
-  const hints = testDesignActionHints(ctx)
-  const showAnalysis =
-    isAnalysisPhase(ctx) || Boolean(analysisQ.data && run.analysisReady)
-  const showPlan =
-    isPlanPhase(ctx) || Boolean(planQ.data && run.planApproved !== undefined)
-  const showCases =
-    isCaseReviewPhase(ctx) ||
-    hints.isApprovalPhase ||
-    Boolean(reviewQ.data?.testCases.length)
+  const analysisForPanel =
+    analysisQ.data ??
+    (run.requirementAnalysis
+      ? summaryToRequirementAnalysis(run.id, run.storyKey, run.requirementAnalysis)
+      : null)
+  const planForPanel =
+    planQ.data ??
+    (run.testDesignPlan
+      ? {
+          runId: run.id,
+          version: run.testDesignPlan.version ?? 1,
+          versionId: run.testDesignPlan.versionId,
+          summary: run.testDesignPlan.summary,
+          estimatedCaseCount: run.testDesignPlan.estimatedCaseCount,
+        }
+      : null)
+
+  const showAnalysis = Boolean(analysisForPanel)
+  const showPlan = Boolean(planForPanel)
+  const showCases = Boolean(reviewQ.data && run.testCaseRecords.length > 0)
   const showApproval = isApprovalPhase(ctx)
   const showPublication = isPublicationPhase(ctx)
 
@@ -171,11 +187,18 @@ export function TestDesignPage() {
             </p>
             <h1 className="text-xl font-semibold tracking-tight">
               <span className="font-mono">{run.storyKey}</span>
-              <span className="text-muted-foreground mx-2">·</span>
-              {run.storyTitle}
+              {storyQ.data?.title ? (
+                <>
+                  <span className="text-muted-foreground mx-2">·</span>
+                  {storyQ.data.title}
+                </>
+              ) : null}
             </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="mt-1 text-sm font-medium">
               {getTestDesignStatusLabel(ctx)}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Run status: {run.status}
             </p>
           </div>
         </div>
@@ -184,32 +207,34 @@ export function TestDesignPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
         <div className="min-w-0 space-y-8">
-          {showAnalysis && analysisQ.data ? (
+          {showAnalysis && analysisForPanel ? (
             <section className="space-y-4">
               <SectionHeading
                 title="Requirement Analysis"
                 description="Review extracted requirements before planning test cases."
               />
-              <RequirementAnalysisPanel analysis={analysisQ.data} />
+              <RequirementAnalysisPanel analysis={analysisForPanel} />
               <AnalysisRevisionComposer
                 run={run}
                 instruction={analysisInstruction}
                 pending={analyze.isPending}
                 onInstructionChange={setAnalysisInstruction}
                 onSubmit={() => {
-                  toast.info('Analysis revision will be available when backend supports it.')
+                  toast.info(
+                    'Analysis revision will be available when backend supports it.',
+                  )
                 }}
               />
             </section>
           ) : null}
 
-          {showPlan && planQ.data && run.status !== 'draft' && run.status !== 'analyzing' ? (
+          {showPlan && planForPanel ? (
             <section className="space-y-4">
               <SectionHeading
                 title="Test-Design Plan"
                 description="Approve the plan before generating test cases."
               />
-              <TestDesignPlanPanel plan={planQ.data} />
+              <TestDesignPlanPanel plan={planForPanel} />
               <TestDesignPlanRevisionComposer
                 run={run}
                 instruction={planInstruction}
@@ -284,7 +309,7 @@ export function TestDesignPage() {
             </section>
           ) : null}
 
-          {run.status === 'draft' && !analysisQ.data ? (
+          {isIntakeReady(ctx) ? (
             <p className="text-muted-foreground text-sm">
               Start by analyzing requirements. QSwarm will extract acceptance
               criteria, gaps, and proposed scope from the Jira story.
@@ -294,6 +319,7 @@ export function TestDesignPage() {
 
         <TestDesignActionRail
           run={run}
+          storyJiraUrl={storyQ.data?.jiraUrl}
           pending={pending}
           onPrimaryAction={(action) => void onPrimaryAction(action)}
           className="xl:sticky xl:top-20 xl:self-start"
@@ -301,6 +327,28 @@ export function TestDesignPage() {
       </div>
     </div>
   )
+}
+
+function summaryToRequirementAnalysis(
+  runId: string,
+  storyKey: string,
+  summary: RequirementAnalysisSummary,
+): RequirementAnalysis {
+  const readiness = summary.readinessStatus
+  const readinessStatus =
+    readiness === 'ready' ||
+    readiness === 'needs_clarification' ||
+    readiness === 'blocked'
+      ? readiness
+      : undefined
+
+  return {
+    runId,
+    storyKey,
+    storyTitle: storyKey,
+    summary: summary.summary,
+    readinessStatus,
+  }
 }
 
 function SectionHeading({

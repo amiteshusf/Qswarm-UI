@@ -13,7 +13,7 @@ type Props = {
 
 export function TestDesignWorkflowStrip({ ctx, className }: Props) {
   const current = testDesignWorkflowStepIndex(ctx)
-  const terminal = ctx.status === 'failed'
+  const terminal = Boolean(ctx.blockedReason)
 
   return (
     <div

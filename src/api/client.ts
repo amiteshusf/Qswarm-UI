@@ -1051,13 +1051,18 @@ export const api = {
   async analyzeRequirements(runId: string) {
     if (useMockData) {
       await delay(200)
+      const existing = findMockTestDesignRun(runId)
       updateMockRun(runId, {
-        status: 'analysis_ready',
-        analysisReady: true,
-        nextActions: [
-          'request_analysis_revision',
-          'prepare_test_design_plan',
-        ],
+        status: 'active',
+        currentStage: 'analysis_ready',
+        nextActions: ['request_analysis_revision', 'prepare_plan'],
+        requirementAnalysis: {
+          summary: `Requirement analysis for ${existing?.storyKey ?? 'story'}.`,
+          readinessStatus: 'needs_clarification',
+          storyKey: existing?.storyKey,
+          acceptanceCriteriaCount: 3,
+          gapsCount: 1,
+        },
       })
       const run = findMockTestDesignRun(runId)!
       mockTestDesignStore.analysis.set(runId, buildMockRequirementAnalysis(run))
@@ -1078,8 +1083,15 @@ export const api = {
     if (useMockData) {
       await delay(180)
       updateMockRun(runId, {
-        status: 'plan_ready',
+        status: 'active',
+        currentStage: 'awaiting_plan_approval',
         nextActions: ['request_plan_changes', 'approve_plan'],
+        testDesignPlan: {
+          version: 1,
+          versionId: `plan_v1_${runId}`,
+          summary: 'Prepared test-design plan.',
+          estimatedCaseCount: 8,
+        },
       })
       const run = findMockTestDesignRun(runId)!
       mockTestDesignStore.plans.set(runId, buildMockTestDesignPlan(run))
@@ -1100,8 +1112,8 @@ export const api = {
     if (useMockData) {
       await delay(120)
       updateMockRun(runId, {
-        status: 'plan_approved',
-        planApproved: true,
+        status: 'active',
+        currentStage: 'plan_approved',
         nextActions: ['generate_test_cases'],
       })
       return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
@@ -1122,12 +1134,14 @@ export const api = {
     if (useMockData) {
       await delay(160)
       updateMockRun(runId, {
-        status: 'plan_preparing',
+        status: 'active',
+        currentStage: 'plan_revision_requested',
         nextActions: [],
       })
       await delay(100)
       updateMockRun(runId, {
-        status: 'plan_ready',
+        status: 'active',
+        currentStage: 'awaiting_plan_approval',
         nextActions: ['request_plan_changes', 'approve_plan'],
       })
       return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
@@ -1155,10 +1169,20 @@ export const api = {
     if (useMockData) {
       await delay(220)
       updateMockRun(runId, {
-        status: 'cases_ready',
-        casesGenerated: true,
-        currentVersion: 1,
+        status: 'active',
+        currentStage: 'awaiting_test_case_review',
         nextActions: ['request_test_case_changes', 'approve_test_design'],
+        versions: [{ version: 1, label: 'Initial generation', caseCount: 3 }],
+        testCaseRecords: [
+          {
+            id: `tc_${runId}_1`,
+            draftId: 'TC-D-001',
+            title: 'Generated test case',
+            priority: 'high',
+            automationCandidate: true,
+            version: 1,
+          },
+        ],
       })
       const run = findMockTestDesignRun(runId)!
       mockTestDesignStore.reviewData.set(
@@ -1183,16 +1207,21 @@ export const api = {
     if (useMockData) {
       await delay(200)
       const run = findMockTestDesignRun(runId)!
-      const nextVersion = (run.currentVersion ?? 1) + 1
+      const nextVersion = (run.versions[0]?.version ?? 1) + 1
       updateMockRun(runId, {
-        status: 'revising',
+        status: 'active',
+        currentStage: 'revising_test_cases',
         nextActions: [],
       })
       await delay(100)
       updateMockRun(runId, {
-        status: 'cases_ready',
-        currentVersion: nextVersion,
+        status: 'active',
+        currentStage: 'awaiting_test_case_review',
         nextActions: ['request_test_case_changes', 'approve_test_design'],
+        versions: [
+          ...(run.versions ?? []),
+          { version: nextVersion, label: `Revision ${nextVersion - 1}`, caseCount: 3 },
+        ],
       })
       const updated = findMockTestDesignRun(runId)!
       const review = buildMockTestDesignReviewData(updated)
@@ -1239,9 +1268,10 @@ export const api = {
     if (useMockData) {
       await delay(120)
       updateMockRun(runId, {
-        status: 'approved',
-        approvedAt: new Date().toISOString(),
+        status: 'active',
+        currentStage: 'approved',
         nextActions: ['publish_test_cases'],
+        approvalId: `approval_${runId}`,
       })
       return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
     }
@@ -1260,9 +1290,10 @@ export const api = {
     if (useMockData) {
       await delay(200)
       updateMockRun(runId, {
-        status: 'published',
-        publishedAt: new Date().toISOString(),
+        status: 'completed',
+        currentStage: 'automation_ready',
         nextActions: ['open_automation_backlog'],
+        automationReadyTestCases: findMockTestDesignRun(runId)?.testCaseRecords ?? [],
       })
       const run = findMockTestDesignRun(runId)!
       mockTestDesignStore.reviewData.set(

@@ -610,42 +610,121 @@ export const storyListSchema = z.object({
 /** @deprecated Use storyListSchema */
 export const jiraStoryListSchema = storyListSchema
 
-const TEST_DESIGN_STATUS_VALUES = [
-  'draft',
-  'analyzing',
+const TEST_DESIGN_CURRENT_STAGES = [
+  'intake_ready',
+  'analyzing_requirements',
   'analysis_ready',
-  'plan_preparing',
-  'plan_ready',
+  'preparing_test_design_plan',
+  'awaiting_plan_approval',
+  'plan_revision_requested',
   'plan_approved',
-  'generating',
-  'cases_ready',
-  'revising',
+  'generating_test_cases',
+  'awaiting_test_case_review',
+  'revising_test_cases',
   'approved',
   'publishing',
-  'published',
-  'failed',
+  'automation_ready',
+  'completed',
+  'legacy_awaiting_approval',
 ] as const
 
-export const testDesignRunStatusSchema = z.enum(TEST_DESIGN_STATUS_VALUES)
+export const testDesignCurrentStageSchema = z.enum(TEST_DESIGN_CURRENT_STAGES)
+
+const TEST_DESIGN_NEXT_ACTIONS = [
+  'analyze_requirements',
+  'request_analysis_revision',
+  'prepare_plan',
+  'approve_plan',
+  'request_plan_changes',
+  'generate_test_cases',
+  'request_test_case_changes',
+  'approve_test_design',
+  'publish_test_cases',
+  'open_automation_backlog',
+] as const
+
+export const testDesignNextActionSchema = z.enum(TEST_DESIGN_NEXT_ACTIONS)
+
+export const testDesignSourceStorySchema = z.object({
+  storyKey: z.string(),
+  intakeArtifactId: z.string().nullable(),
+})
+
+export const productWorkspaceSchema = z.object({
+  mode: z.string(),
+  stage: z.string(),
+})
+
+export const requirementAnalysisSummarySchema = z.object({
+  summary: z.string().optional(),
+  readinessStatus: z.string().optional(),
+  storyKey: z.string().optional(),
+  acceptanceCriteriaCount: z.coerce.number().optional(),
+  gapsCount: z.coerce.number().optional(),
+})
+
+export const testDesignPlanSummarySchema = z.object({
+  version: z.coerce.number().optional(),
+  versionId: z.string().optional(),
+  summary: z.string().optional(),
+  estimatedCaseCount: z.coerce.number().optional(),
+})
+
+export const reviewIssueSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  summary: z.string().optional(),
+  instruction: z.string().optional(),
+  scope: z.string().optional(),
+})
+
+export const testCaseRecordSchema = z.object({
+  id: z.string(),
+  recordId: z.string().optional(),
+  draftId: z.string().optional(),
+  title: z.string(),
+  objective: z.string().optional(),
+  priority: z.string().optional(),
+  caseType: z.string().optional(),
+  automationCandidate: z.boolean().optional(),
+  version: z.coerce.number().optional(),
+  linkedAcceptanceCriteria: z.array(z.string()).optional(),
+})
+
+export const testDesignRunVersionSchema = z.object({
+  id: z.string().optional(),
+  version: z.coerce.number(),
+  versionId: z.string().optional(),
+  label: z.string().optional(),
+  createdAt: z.string().optional(),
+  caseCount: z.coerce.number().optional(),
+})
 
 export const testDesignRunSchema = z.object({
-  id: z.string(),
+  id: z.string().uuid(),
   storyKey: z.string(),
-  storyTitle: z.string(),
-  projectKey: z.string().optional(),
-  status: testDesignRunStatusSchema,
-  workflowStatus: z.string().optional(),
-  nextActions: z.array(z.string()).optional(),
-  currentVersion: z.coerce.number().optional(),
-  planApproved: z.boolean().optional(),
-  analysisReady: z.boolean().optional(),
-  casesGenerated: z.boolean().optional(),
-  approvedAt: z.string().optional(),
-  publishedAt: z.string().optional(),
-  externalUrl: z.string().optional(),
+  workflowName: z.string(),
+  status: z.string(),
+  currentStep: z.string(),
+  currentStage: testDesignCurrentStageSchema,
+  nextActions: z.array(testDesignNextActionSchema),
+  blockedReason: z.string().nullable(),
+  initiatedBy: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  sourceStory: testDesignSourceStorySchema,
+  requirementAnalysis: requirementAnalysisSummarySchema.nullable(),
+  testDesignPlan: testDesignPlanSummarySchema.nullable(),
+  reviewIssue: reviewIssueSchema.nullable(),
+  versions: z.array(testDesignRunVersionSchema),
+  testCaseRecords: z.array(testCaseRecordSchema),
+  automationReadyTestCases: z.array(testCaseRecordSchema),
+  approvalId: z.string().nullable(),
+  productWorkspace: productWorkspaceSchema,
 })
+
+/** @deprecated Use testDesignCurrentStageSchema */
+export const testDesignRunStatusSchema = testDesignCurrentStageSchema
 
 export const requirementAnalysisSchema = z.object({
   runId: z.string(),
@@ -789,6 +868,14 @@ export const testDesignRevisionInputSchema = z
 
 export type JiraStory = z.infer<typeof jiraStorySchema>
 export type TestDesignRun = z.infer<typeof testDesignRunSchema>
+export type TestDesignCurrentStage = z.infer<typeof testDesignCurrentStageSchema>
+export type TestDesignNextAction = z.infer<typeof testDesignNextActionSchema>
+export type TestCaseRecord = z.infer<typeof testCaseRecordSchema>
+export type RequirementAnalysisSummary = z.infer<
+  typeof requirementAnalysisSummarySchema
+>
+export type TestDesignPlanSummary = z.infer<typeof testDesignPlanSummarySchema>
+export type ReviewIssue = z.infer<typeof reviewIssueSchema>
 export type RequirementAnalysis = z.infer<typeof requirementAnalysisSchema>
 export type TestDesignPlan = z.infer<typeof testDesignPlanSchema>
 export type TestCaseDraft = z.infer<typeof testCaseDraftSchema>
@@ -796,4 +883,4 @@ export type TestDesignReviewData = z.infer<typeof testDesignReviewDataSchema>
 export type TestDesignRevisionInput = z.infer<
   typeof testDesignRevisionInputSchema
 >
-export type TestDesignRunStatus = z.infer<typeof testDesignRunStatusSchema>
+export type TestDesignRunStatus = TestDesignCurrentStage

@@ -99,7 +99,45 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 ## `GET /api/v1/test-design-runs/{id}`
 
-- **Response:** `testDesignRunSchema` with `status`, `nextActions[]`, `storyKey`, `storyTitle`, `planApproved`, `currentVersion`
+- **Response:** workspace run detail (canonical id is `id`, UUID)
+- **Top-level fields:** `id`, `storyKey`, `workflowName`, `status`, `currentStep`, `currentStage`, `nextActions[]`, `blockedReason` (nullable), `initiatedBy`, `createdAt`, `updatedAt`, `sourceStory`, `requirementAnalysis` (nullable), `testDesignPlan` (nullable), `reviewIssue` (nullable), `versions[]`, `testCaseRecords[]`, `automationReadyTestCases[]`, `approvalId` (nullable), `productWorkspace`
+- **`sourceStory`:** `{ storyKey, intakeArtifactId }` only — not a full Jira story
+- **`currentStage` values:** `intake_ready`, `analyzing_requirements`, `analysis_ready`, `preparing_test_design_plan`, `awaiting_plan_approval`, `plan_revision_requested`, `plan_approved`, `generating_test_cases`, `awaiting_test_case_review`, `revising_test_cases`, `approved`, `publishing`, `automation_ready`, `completed`, `legacy_awaiting_approval`
+- **`nextActions` examples:** `analyze_requirements`, `prepare_plan`, `approve_plan`, `request_plan_changes`, `generate_test_cases`, `request_test_case_changes`, `approve_test_design`, `publish_test_cases`, `open_automation_backlog`
+- **Errors:** `{ "detail": { "code": "not_found", "message": "...", "field": null } }`
+
+Example `intake_ready` response:
+
+```json
+{
+  "id": "38d476a7-8294-4acd-909b-36de472f18d0",
+  "storyKey": "NSP-696",
+  "workflowName": "sprint1_qswarm_workspace",
+  "status": "pending",
+  "currentStep": "intake_ready",
+  "currentStage": "intake_ready",
+  "nextActions": ["analyze_requirements"],
+  "blockedReason": null,
+  "initiatedBy": "qswarm-web",
+  "createdAt": "2026-07-24T12:22:13.387184+00:00",
+  "updatedAt": "2026-07-24T12:22:13.387184+00:00",
+  "sourceStory": {
+    "storyKey": "NSP-696",
+    "intakeArtifactId": "7995e03e-0881-4027-9650-ddabe2540da0"
+  },
+  "requirementAnalysis": null,
+  "testDesignPlan": null,
+  "reviewIssue": null,
+  "versions": [],
+  "testCaseRecords": [],
+  "automationReadyTestCases": [],
+  "approvalId": null,
+  "productWorkspace": {
+    "mode": "qswarm_first",
+    "stage": "intake_ready"
+  }
+}
+```
 
 ## `GET /api/v1/test-design-runs/{id}/requirement-analysis`
 

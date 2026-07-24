@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 
 type Props = {
   run: TestDesignRun
+  storyJiraUrl?: string
   pending?: boolean
   onPrimaryAction: (action: TestDesignPrimaryAction) => void
   className?: string
@@ -25,6 +26,7 @@ type Props = {
 
 export function TestDesignActionRail({
   run,
+  storyJiraUrl,
   pending,
   onPrimaryAction,
   className,
@@ -73,9 +75,9 @@ export function TestDesignActionRail({
         </div>
       ) : null}
 
-      {run.externalUrl ? (
+      {storyJiraUrl ? (
         <a
-          href={run.externalUrl}
+          href={storyJiraUrl}
           target="_blank"
           rel="noreferrer"
           className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs"

@@ -10,9 +10,10 @@ import {
   type TestDesignStage,
 } from '@/features/test-design/test-design-lifecycle'
 
+/** Wire-format next action tokens from the backend. */
 export type TestDesignPrimaryAction =
   | 'analyze_requirements'
-  | 'prepare_test_design_plan'
+  | 'prepare_plan'
   | 'approve_plan'
   | 'generate_test_cases'
   | 'approve_test_design'
@@ -48,7 +49,7 @@ export type TestDesignActionHints = {
 
 const PRIMARY_LABELS: Record<TestDesignPrimaryAction, string> = {
   analyze_requirements: 'Analyze requirements',
-  prepare_test_design_plan: 'Prepare test-design plan',
+  prepare_plan: 'Prepare test-design plan',
   approve_plan: 'Approve plan',
   generate_test_cases: 'Generate test cases',
   approve_test_design: 'Approve test design',
@@ -69,31 +70,31 @@ function hasAction(actions: string[] | undefined, action: string): boolean {
 export function buildTestDesignContext(run: TestDesignRun): TestDesignContext {
   return {
     status: run.status,
-    workflowStatus: run.workflowStatus,
-    planApproved: run.planApproved,
-    analysisReady: run.analysisReady,
-    casesGenerated: run.casesGenerated,
+    currentStep: run.currentStep,
+    currentStage: run.currentStage,
     nextActions: run.nextActions,
+    blockedReason: run.blockedReason,
+    productWorkspace: run.productWorkspace,
   }
 }
+
+const PRIMARY_ACTION_ORDER: TestDesignPrimaryAction[] = [
+  'open_automation_backlog',
+  'publish_test_cases',
+  'approve_test_design',
+  'generate_test_cases',
+  'approve_plan',
+  'prepare_plan',
+  'analyze_requirements',
+]
 
 export function resolvePrimaryTestDesignAction(
   ctx: TestDesignContext,
 ): TestDesignPrimaryAction | null {
   const actions = ctx.nextActions ?? []
   if (actions.length > 0) {
-    if (hasAction(actions, 'open_automation_backlog')) {
-      return 'open_automation_backlog'
-    }
-    if (hasAction(actions, 'publish_test_cases')) return 'publish_test_cases'
-    if (hasAction(actions, 'approve_test_design')) return 'approve_test_design'
-    if (hasAction(actions, 'generate_test_cases')) return 'generate_test_cases'
-    if (hasAction(actions, 'approve_plan')) return 'approve_plan'
-    if (hasAction(actions, 'prepare_test_design_plan')) {
-      return 'prepare_test_design_plan'
-    }
-    if (hasAction(actions, 'analyze_requirements')) {
-      return 'analyze_requirements'
+    for (const candidate of PRIMARY_ACTION_ORDER) {
+      if (hasAction(actions, candidate)) return candidate
     }
     return null
   }
@@ -103,16 +104,18 @@ export function resolvePrimaryTestDesignAction(
     case 'intake':
       return 'analyze_requirements'
     case 'analysis_review':
-      return 'prepare_test_design_plan'
+      return 'prepare_plan'
     case 'plan_review':
       return 'approve_plan'
     case 'plan_approved':
       return 'generate_test_cases'
     case 'case_review':
+    case 'legacy_approval':
       return 'approve_test_design'
     case 'approval':
       return 'publish_test_cases'
-    case 'published':
+    case 'automation_ready':
+    case 'completed':
       return 'open_automation_backlog'
     default:
       return null
@@ -131,7 +134,7 @@ export function testDesignActionHints(
     actions,
     'request_analysis_revision',
   )
-  const canPreparePlan = primaryAction === 'prepare_test_design_plan'
+  const canPreparePlan = primaryAction === 'prepare_plan'
   const canApprovePlan = primaryAction === 'approve_plan'
   const canRequestPlanChanges = hasAction(actions, 'request_plan_changes')
   const canGenerateCases = primaryAction === 'generate_test_cases'
@@ -180,7 +183,7 @@ export function isTestDesignActionAllowed(
       return hints.canAnalyze
     case 'request_analysis_revision':
       return hints.canRequestAnalysisRevision
-    case 'prepare_test_design_plan':
+    case 'prepare_plan':
       return hints.canPreparePlan
     case 'approve_plan':
       return hints.canApprovePlan
