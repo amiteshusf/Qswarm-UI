@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils'
 
 const routeTitles: Record<string, string> = {
   '/': 'Overview',
+  '/story-intake': 'Story Intake',
+  '/test-design': 'Test Design',
   '/automation-backlog': 'Automation backlog',
   '/sessions': 'Automation runs',
   '/repo-connections': 'Repositories',
@@ -25,6 +27,9 @@ const routeTitles: Record<string, string> = {
 }
 
 function pageTitle(pathname: string, search: string): string {
+  if (pathname.startsWith('/test-design/') && pathname !== '/test-design') {
+    return 'Test Design workspace'
+  }
   if (pathname.startsWith('/sessions/') && pathname !== '/sessions') {
     return 'Run review'
   }

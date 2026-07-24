@@ -263,3 +263,148 @@ export function useAutomateTestCase() {
     },
   })
 }
+
+function invalidateTestDesignQueries(qc: ReturnType<typeof useQueryClient>, id: string) {
+  void qc.invalidateQueries({ queryKey: qk.testDesignRun(id) })
+  void qc.invalidateQueries({ queryKey: qk.testDesignAnalysis(id) })
+  void qc.invalidateQueries({ queryKey: qk.testDesignPlan(id) })
+  void qc.invalidateQueries({ queryKey: qk.testDesignReviewData(id) })
+}
+
+export function useStories(filters?: {
+  q?: string
+  project?: string
+  sprint?: string
+  status?: string
+  readiness?: string
+}) {
+  return useQuery({
+    queryKey: qk.stories(filters),
+    queryFn: () => api.listStories(filters),
+    staleTime: 20_000,
+  })
+}
+
+export function useStory(key: string | undefined) {
+  return useQuery({
+    queryKey: qk.story(key ?? ''),
+    queryFn: () => api.getStory(key!),
+    enabled: Boolean(key),
+  })
+}
+
+export function useCreateTestDesignRun() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (storyKey: string) => api.createTestDesignRun(storyKey),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['stories'] })
+      void qc.invalidateQueries({ queryKey: qk.dashboard })
+    },
+  })
+}
+
+export function useTestDesignRun(id: string | undefined) {
+  return useQuery({
+    queryKey: qk.testDesignRun(id ?? ''),
+    queryFn: () => api.getTestDesignRun(id!),
+    enabled: Boolean(id),
+    refetchOnMount: 'always',
+  })
+}
+
+export function useRequirementAnalysis(runId: string | undefined) {
+  return useQuery({
+    queryKey: qk.testDesignAnalysis(runId ?? ''),
+    queryFn: () => api.getRequirementAnalysis(runId!),
+    enabled: Boolean(runId),
+  })
+}
+
+export function useTestDesignPlan(runId: string | undefined) {
+  return useQuery({
+    queryKey: qk.testDesignPlan(runId ?? ''),
+    queryFn: () => api.getTestDesignPlan(runId!),
+    enabled: Boolean(runId),
+  })
+}
+
+export function useTestDesignReviewData(runId: string | undefined) {
+  return useQuery({
+    queryKey: qk.testDesignReviewData(runId ?? ''),
+    queryFn: () => api.getTestDesignReviewData(runId!),
+    enabled: Boolean(runId),
+  })
+}
+
+export function useAnalyzeRequirements(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.analyzeRequirements(runId),
+    onSuccess: () => {
+      invalidateTestDesignQueries(qc, runId)
+      void qc.invalidateQueries({ queryKey: ['stories'] })
+    },
+  })
+}
+
+export function usePrepareTestDesignPlan(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.prepareTestDesignPlan(runId),
+    onSuccess: () => invalidateTestDesignQueries(qc, runId),
+  })
+}
+
+export function useApproveTestDesignPlan(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.approveTestDesignPlan(runId),
+    onSuccess: () => invalidateTestDesignQueries(qc, runId),
+  })
+}
+
+export function useRequestTestDesignPlanRevision(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: unknown) => api.requestTestDesignPlanRevision(runId, input),
+    onSuccess: () => invalidateTestDesignQueries(qc, runId),
+  })
+}
+
+export function useGenerateTestCases(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.generateTestCases(runId),
+    onSuccess: () => invalidateTestDesignQueries(qc, runId),
+  })
+}
+
+export function useRequestTestCaseRevision(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: unknown) => api.requestTestCaseRevision(runId, input),
+    onSuccess: () => invalidateTestDesignQueries(qc, runId),
+  })
+}
+
+export function useApproveTestDesign(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.approveTestDesign(runId),
+    onSuccess: () => invalidateTestDesignQueries(qc, runId),
+  })
+}
+
+export function usePublishTestCases(runId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.publishTestCases(runId),
+    onSuccess: () => {
+      invalidateTestDesignQueries(qc, runId)
+      void qc.invalidateQueries({ queryKey: ['automation-backlog'] })
+      void qc.invalidateQueries({ queryKey: ['stories'] })
+      void qc.invalidateQueries({ queryKey: qk.dashboard })
+    },
+  })
+}

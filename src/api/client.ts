@@ -21,9 +21,20 @@ import {
   mockSettings,
 } from '@/api/mocks/data'
 import {
-  findMockTestCase,
-  mockAutomationBacklog,
-} from '@/api/mocks/test-cases'
+  mockJiraProjects,
+  mockJiraStories,
+  findMockStory,
+} from '@/api/mocks/stories'
+import {
+  buildMockRequirementAnalysis,
+  buildMockTestDesignPlan,
+  buildMockTestDesignReviewData,
+  createMockTestDesignRun,
+  findMockTestDesignRun,
+  listMockTestDesignRuns,
+  mockTestDesignStore,
+  updateMockRun,
+} from '@/api/mocks/test-design'
 import {
   buildMockSessionBrief,
   buildMockSessionReviewData,
@@ -39,6 +50,9 @@ import {
   repoConnectionFormSchema,
   repoConnectionFormToWire,
   repoConnectionSchema,
+  jiraStoryListSchema,
+  jiraStorySchema,
+  requirementAnalysisSchema,
   revisionRequestSchema,
   sessionCreateInputSchema,
   sessionBriefSchema,
@@ -46,7 +60,15 @@ import {
   sessionReviewDataSchema,
   sessionSummarySchema,
   settingsSchema,
+  testDesignPlanSchema,
+  testDesignRevisionInputSchema,
+  testDesignReviewDataSchema,
+  testDesignRunSchema,
 } from '@/api/schemas'
+import {
+  findMockTestCase,
+  mockAutomationBacklog,
+} from '@/api/mocks/test-cases'
 import type {
   AutomateTestCaseInput,
   RepoConnection,
@@ -881,5 +903,386 @@ export const api = {
       body: JSON.stringify(patch),
     })
     return parseWithSchema(settingsSchema, data, 'PATCH /settings')
+  },
+
+  // --- Sprint 1: Jira stories & test-design runs ---
+
+  async listStories(filters?: {
+    q?: string
+    project?: string
+    sprint?: string
+    status?: string
+    readiness?: string
+  }) {
+    if (useMockData) {
+      await delay(90)
+      let items = [...mockJiraStories]
+      if (filters?.project) {
+        items = items.filter((s) => s.projectKey === filters.project)
+      }
+      if (filters?.readiness) {
+        items = items.filter(
+          (s) => s.acceptanceCriteriaReadiness === filters.readiness,
+        )
+      }
+      if (filters?.q?.trim()) {
+        const q = filters.q.trim().toLowerCase()
+        items = items.filter(
+          (s) =>
+            s.key.toLowerCase().includes(q) ||
+            s.title.toLowerCase().includes(q),
+        )
+      }
+      return jiraStoryListSchema.parse({
+        items,
+        total: items.length,
+        projects: mockJiraProjects,
+      })
+    }
+    const params = new URLSearchParams()
+    if (filters?.q?.trim()) params.set('q', filters.q.trim())
+    if (filters?.project) params.set('project', filters.project)
+    if (filters?.sprint) params.set('sprint', filters.sprint)
+    if (filters?.status) params.set('status', filters.status)
+    if (filters?.readiness) params.set('readiness', filters.readiness)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    const data = await fetchJson<unknown>(`${url('stories')}${qs}`)
+    return parseWithSchema(jiraStoryListSchema, data, 'GET /stories')
+  },
+
+  async getStory(key: string) {
+    if (useMockData) {
+      await delay(60)
+      const row = findMockStory(key)
+      if (!row) throw new ApiError('Story not found', 404)
+      return jiraStorySchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('stories', key))
+    return parseWithSchema(jiraStorySchema, data, `GET /stories/${key}`)
+  },
+
+  async createTestDesignRun(storyKey: string) {
+    if (useMockData) {
+      await delay(140)
+      const existing = listMockTestDesignRuns().find(
+        (r) => r.storyKey === storyKey && r.status !== 'published',
+      )
+      if (existing) return testDesignRunSchema.parse(existing)
+      return testDesignRunSchema.parse(createMockTestDesignRun(storyKey))
+    }
+    const data = await fetchJson<unknown>(
+      url('stories', storyKey, 'test-design-runs'),
+      {
+        method: 'POST',
+        body: sessionMutationBody({ createdBy: sessionCreatedBy }),
+      },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /stories/${storyKey}/test-design-runs`,
+    )
+  },
+
+  async getTestDesignRun(id: string) {
+    if (useMockData) {
+      await delay(70)
+      const row = findMockTestDesignRun(id)
+      if (!row) throw new ApiError('Test-design run not found', 404)
+      return testDesignRunSchema.parse(row)
+    }
+    const data = await fetchJson<unknown>(url('test-design-runs', id))
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `GET /test-design-runs/${id}`,
+    )
+  },
+
+  async getRequirementAnalysis(runId: string) {
+    if (useMockData) {
+      await delay(80)
+      const run = findMockTestDesignRun(runId)
+      if (!run) throw new ApiError('Not found', 404)
+      return requirementAnalysisSchema.parse(buildMockRequirementAnalysis(run))
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'requirement-analysis'),
+    )
+    return parseWithSchema(
+      requirementAnalysisSchema,
+      data,
+      `GET /test-design-runs/${runId}/requirement-analysis`,
+    )
+  },
+
+  async getTestDesignPlan(runId: string) {
+    if (useMockData) {
+      await delay(70)
+      const run = findMockTestDesignRun(runId)
+      if (!run) throw new ApiError('Not found', 404)
+      return testDesignPlanSchema.parse(buildMockTestDesignPlan(run))
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'test-design-plan'),
+    )
+    return parseWithSchema(
+      testDesignPlanSchema,
+      data,
+      `GET /test-design-runs/${runId}/test-design-plan`,
+    )
+  },
+
+  async getTestDesignReviewData(runId: string) {
+    if (useMockData) {
+      await delay(90)
+      const run = findMockTestDesignRun(runId)
+      if (!run) throw new ApiError('Not found', 404)
+      return testDesignReviewDataSchema.parse(
+        buildMockTestDesignReviewData(run),
+      )
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'review-data'),
+    )
+    return parseWithSchema(
+      testDesignReviewDataSchema,
+      data,
+      `GET /test-design-runs/${runId}/review-data`,
+    )
+  },
+
+  async analyzeRequirements(runId: string) {
+    if (useMockData) {
+      await delay(200)
+      updateMockRun(runId, {
+        status: 'analysis_ready',
+        analysisReady: true,
+        nextActions: [
+          'request_analysis_revision',
+          'prepare_test_design_plan',
+        ],
+      })
+      const run = findMockTestDesignRun(runId)!
+      mockTestDesignStore.analysis.set(runId, buildMockRequirementAnalysis(run))
+      return testDesignRunSchema.parse(run)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'analyze-requirements'),
+      { method: 'POST', body: sessionMutationBody() },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/analyze-requirements`,
+    )
+  },
+
+  async prepareTestDesignPlan(runId: string) {
+    if (useMockData) {
+      await delay(180)
+      updateMockRun(runId, {
+        status: 'plan_ready',
+        nextActions: ['request_plan_changes', 'approve_plan'],
+      })
+      const run = findMockTestDesignRun(runId)!
+      mockTestDesignStore.plans.set(runId, buildMockTestDesignPlan(run))
+      return testDesignRunSchema.parse(run)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'prepare-test-design-plan'),
+      { method: 'POST', body: sessionMutationBody() },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/prepare-test-design-plan`,
+    )
+  },
+
+  async approveTestDesignPlan(runId: string) {
+    if (useMockData) {
+      await delay(120)
+      updateMockRun(runId, {
+        status: 'plan_approved',
+        planApproved: true,
+        nextActions: ['generate_test_cases'],
+      })
+      return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'approve-plan'),
+      { method: 'POST', body: sessionMutationBody() },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/approve-plan`,
+    )
+  },
+
+  async requestTestDesignPlanRevision(runId: string, input: unknown) {
+    const body = testDesignRevisionInputSchema.parse(input)
+    if (useMockData) {
+      await delay(160)
+      updateMockRun(runId, {
+        status: 'plan_preparing',
+        nextActions: [],
+      })
+      await delay(100)
+      updateMockRun(runId, {
+        status: 'plan_ready',
+        nextActions: ['request_plan_changes', 'approve_plan'],
+      })
+      return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'request-plan-revision'),
+      {
+        method: 'POST',
+        body: sessionMutationBody({
+          instruction: body.instruction,
+          instructionText: body.instruction,
+          ...(body.scope ? { scope: body.scope } : {}),
+          ...(body.focusArea ? { focusArea: body.focusArea } : {}),
+        }),
+      },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/request-plan-revision`,
+    )
+  },
+
+  async generateTestCases(runId: string) {
+    if (useMockData) {
+      await delay(220)
+      updateMockRun(runId, {
+        status: 'cases_ready',
+        casesGenerated: true,
+        currentVersion: 1,
+        nextActions: ['request_test_case_changes', 'approve_test_design'],
+      })
+      const run = findMockTestDesignRun(runId)!
+      mockTestDesignStore.reviewData.set(
+        runId,
+        buildMockTestDesignReviewData(run),
+      )
+      return testDesignRunSchema.parse(run)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'generate-test-cases'),
+      { method: 'POST', body: sessionMutationBody() },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/generate-test-cases`,
+    )
+  },
+
+  async requestTestCaseRevision(runId: string, input: unknown) {
+    const body = testDesignRevisionInputSchema.parse(input)
+    if (useMockData) {
+      await delay(200)
+      const run = findMockTestDesignRun(runId)!
+      const nextVersion = (run.currentVersion ?? 1) + 1
+      updateMockRun(runId, {
+        status: 'revising',
+        nextActions: [],
+      })
+      await delay(100)
+      updateMockRun(runId, {
+        status: 'cases_ready',
+        currentVersion: nextVersion,
+        nextActions: ['request_test_case_changes', 'approve_test_design'],
+      })
+      const updated = findMockTestDesignRun(runId)!
+      const review = buildMockTestDesignReviewData(updated)
+      review.reviewConversation.push({
+        id: `conv_${Date.now()}`,
+        type: 'request_revision',
+        actor: 'reviewer',
+        text: body.instruction,
+        createdAt: new Date().toISOString(),
+        scope: body.scope,
+      })
+      review.reviewConversation.push({
+        id: `conv_${Date.now() + 1}`,
+        type: 'agent',
+        actor: 'qswarm',
+        text: `Revision complete. Version ${nextVersion} ready for review.`,
+        createdAt: new Date().toISOString(),
+        status: 'completed',
+      })
+      review.reviewSummary.currentVersion = nextVersion
+      mockTestDesignStore.reviewData.set(runId, review)
+      return testDesignRunSchema.parse(updated)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'request-test-case-revision'),
+      {
+        method: 'POST',
+        body: sessionMutationBody({
+          instruction: body.instruction,
+          instructionText: body.instruction,
+          ...(body.scope ? { scope: body.scope } : {}),
+          ...(body.focusArea ? { focusArea: body.focusArea } : {}),
+        }),
+      },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/request-test-case-revision`,
+    )
+  },
+
+  async approveTestDesign(runId: string) {
+    if (useMockData) {
+      await delay(120)
+      updateMockRun(runId, {
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        nextActions: ['publish_test_cases'],
+      })
+      return testDesignRunSchema.parse(findMockTestDesignRun(runId)!)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'approve'),
+      { method: 'POST', body: sessionMutationBody() },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/approve`,
+    )
+  },
+
+  async publishTestCases(runId: string) {
+    if (useMockData) {
+      await delay(200)
+      updateMockRun(runId, {
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        nextActions: ['open_automation_backlog'],
+      })
+      const run = findMockTestDesignRun(runId)!
+      mockTestDesignStore.reviewData.set(
+        runId,
+        buildMockTestDesignReviewData(run),
+      )
+      return testDesignRunSchema.parse(run)
+    }
+    const data = await fetchJson<unknown>(
+      url('test-design-runs', runId, 'publish'),
+      { method: 'POST', body: sessionMutationBody() },
+    )
+    return parseWithSchema(
+      testDesignRunSchema,
+      data,
+      `POST /test-design-runs/${runId}/publish`,
+    )
   },
 }

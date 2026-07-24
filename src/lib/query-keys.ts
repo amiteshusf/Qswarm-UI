@@ -12,5 +12,15 @@ export const qk = {
   automationBacklog: (filters?: Record<string, string | undefined>) =>
     ['automation-backlog', filters ?? {}] as const,
   testCase: (id: string) => ['test-cases', id] as const,
+  stories: (filters?: Record<string, string | undefined>) =>
+    ['stories', filters ?? {}] as const,
+  story: (key: string) => ['stories', key] as const,
+  testDesignRun: (id: string) => ['test-design-runs', id] as const,
+  testDesignAnalysis: (id: string) =>
+    ['test-design-runs', id, 'requirement-analysis'] as const,
+  testDesignPlan: (id: string) =>
+    ['test-design-runs', id, 'test-design-plan'] as const,
+  testDesignReviewData: (id: string) =>
+    ['test-design-runs', id, 'review-data'] as const,
   settings: ['settings'] as const,
 }

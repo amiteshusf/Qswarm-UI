@@ -1,16 +1,15 @@
 import { formatDistanceToNow } from 'date-fns'
 import { motion } from 'framer-motion'
 import {
-  AlertTriangle,
   ArrowRight,
-  CheckCircle2,
+  BookOpen,
   ClipboardCheck,
-  Plus,
-  Zap,
+  ListChecks,
+  PenLine,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { useDashboard, useRepoConnections } from '@/api/hooks'
+import { useAutomationBacklog, useDashboard, useRepoConnections, useStories } from '@/api/hooks'
 import type { SessionStatus } from '@/api/schemas'
 import { MetricTile } from '@/components/patterns/metric-tile'
 import { PageHeader } from '@/components/patterns/page-header'
@@ -25,6 +24,8 @@ import { cn } from '@/lib/utils'
 export function DashboardPage() {
   const dashboard = useDashboard()
   const repos = useRepoConnections()
+  const stories = useStories()
+  const backlog = useAutomationBacklog({ status: 'not_automated' })
 
   const repoName = (id: string) =>
     repos.data?.find((r) => r.id === id)?.displayName ??
@@ -32,12 +33,14 @@ export function DashboardPage() {
     id
 
   const awaiting = dashboard.data?.sessionCounts.awaiting_review ?? 0
-  const active =
-    (dashboard.data?.sessionCounts.running ?? 0) +
-    (dashboard.data?.sessionCounts.queued ?? 0) +
-    (dashboard.data?.sessionCounts.revising ?? 0)
   const failed = dashboard.data?.sessionCounts.failed ?? 0
-  const published = dashboard.data?.sessionCounts.succeeded ?? 0
+
+  const storyItems = stories.data?.items ?? []
+  const needsAnalysis = storyItems.filter(
+    (s) => !s.hasActiveRun && (s.acceptanceCriteriaReadiness ?? 'ready') !== 'missing',
+  )
+  const activeDesignRuns = storyItems.filter((s) => s.hasActiveRun && s.activeRunStatus !== 'published')
+  const automationReady = backlog.data?.items.length ?? 0
 
   const recent = dashboard.data?.recentSessions ?? []
   const reviewSessions = recent.filter((s) => s.status === 'awaiting_review')
@@ -53,9 +56,13 @@ export function DashboardPage() {
         description="Prioritized by review decisions, active automation, failures, and recent publishes."
         actions={
           <div className="flex flex-wrap gap-2">
-            <LinkButton to="/automation-backlog">
-              <Plus className="size-4" />
-              Automate test case
+            <LinkButton to="/story-intake">
+              <BookOpen className="size-4" />
+              Select Jira stories
+            </LinkButton>
+            <LinkButton variant="outline" to="/automation-backlog">
+              <ListChecks className="size-4" />
+              Automation backlog
             </LinkButton>
             <LinkButton variant="outline" to="/sessions?status=awaiting_review">
               <ClipboardCheck className="size-4" />
@@ -87,37 +94,81 @@ export function DashboardPage() {
           className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         >
           <MetricTile
+            label="Stories to design"
+            value={needsAnalysis.length}
+            hint="Ready for test design"
+            icon={BookOpen}
+            variant={needsAnalysis.length > 0 ? 'active' : 'default'}
+          />
+          <MetricTile
+            label="Design in progress"
+            value={activeDesignRuns.length}
+            hint="Test-design runs active"
+            icon={PenLine}
+            variant={activeDesignRuns.length > 0 ? 'active' : 'default'}
+          />
+          <MetricTile
+            label="Ready to automate"
+            value={automationReady}
+            hint="Published cases in backlog"
+            icon={ListChecks}
+            variant={automationReady > 0 ? 'attention' : 'default'}
+          />
+          <MetricTile
             label="Needs review"
             value={awaiting}
-            hint="Ready for your approval"
+            hint="Automation output awaiting review"
             icon={ClipboardCheck}
             variant={awaiting > 0 ? 'attention' : 'default'}
-          />
-          <MetricTile
-            label="Running now"
-            value={active}
-            hint="Automation in progress"
-            icon={Zap}
-            variant={active > 0 ? 'active' : 'default'}
-          />
-          <MetricTile
-            label="Failed"
-            value={failed}
-            hint="Runs that need attention"
-            icon={AlertTriangle}
-            variant={failed > 0 ? 'attention' : 'default'}
-          />
-          <MetricTile
-            label="Published"
-            value={published}
-            hint="Completed & shipped outcomes"
-            icon={CheckCircle2}
-            variant="success"
           />
         </motion.div>
       ) : null}
 
       <div className="space-y-8">
+        <SectionBlock
+          title="Stories ready for test design"
+          description="Select Jira stories to analyze requirements and generate test cases."
+          actions={
+            needsAnalysis.length > 0 ? (
+              <LinkButton variant="ghost" size="sm" to="/story-intake">
+                View all
+                <ArrowRight className="size-4" />
+              </LinkButton>
+            ) : null
+          }
+        >
+          {stories.isLoading ? (
+            <Skeleton className="h-24 rounded-xl" />
+          ) : needsAnalysis.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No new stories need test design.{' '}
+              <Link to="/story-intake" className="text-swarm font-medium hover:underline">
+                Browse Story Intake
+              </Link>
+            </p>
+          ) : (
+            <StoryList items={needsAnalysis.slice(0, 5)} />
+          )}
+        </SectionBlock>
+
+        <SectionBlock
+          title="Test designs in progress"
+          description="Continue reviewing plans, cases, or publication."
+          actions={
+            <LinkButton variant="ghost" size="sm" to="/test-design">
+              View all
+            </LinkButton>
+          }
+        >
+          {stories.isLoading ? (
+            <Skeleton className="h-20 rounded-xl" />
+          ) : activeDesignRuns.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No active test-design runs.</p>
+          ) : (
+            <StoryList items={activeDesignRuns.slice(0, 5)} showRun />
+          )}
+        </SectionBlock>
+
         <SectionBlock
           title="Ready for review"
           description="Approve output or request changes before publishing."
@@ -201,6 +252,46 @@ export function DashboardPage() {
           )}
         </SectionBlock>
       </div>
+    </div>
+  )
+}
+
+function StoryList({
+  items,
+  showRun,
+}: {
+  items: Array<{
+    key: string
+    title: string
+    activeRunId?: string | null
+    activeRunStatus?: string
+    updatedAt?: string
+  }>
+  showRun?: boolean
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((s) => (
+        <Link
+          key={s.key}
+          to={
+            showRun && s.activeRunId
+              ? `/test-design/${s.activeRunId}`
+              : '/story-intake'
+          }
+          className="border-border/70 bg-surface-raised hover:border-swarm/35 flex items-center justify-between gap-4 rounded-xl border p-4 transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="font-mono text-sm font-semibold">{s.key}</p>
+            <p className="truncate text-sm">{s.title}</p>
+          </div>
+          {showRun && s.activeRunStatus ? (
+            <span className="text-muted-foreground shrink-0 text-xs capitalize">
+              {s.activeRunStatus.replace(/_/g, ' ')}
+            </span>
+          ) : null}
+        </Link>
+      ))}
     </div>
   )
 }

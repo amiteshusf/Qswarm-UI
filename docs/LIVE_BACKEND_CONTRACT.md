@@ -58,6 +58,52 @@ Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`** (
 
 - **Shape:** flat read-only slice, e.g. `applicationName`, `environment`, `debug`, `jira: { useStub, configured }`, `codingProvider`, `workspaceRoot`, `claudeCodeEnabled`, `copilotAgentEnabled`, `notes` — **not** the older nested `engine` / `infrastructure` / `source` document.
 
+## `GET /api/v1/stories`
+
+- **Query:** optional `q`, `project`, `sprint`, `status`, `readiness` (`ready` | `partial` | `missing`)
+- **Response:** `{ items: JiraStory[], total?, projects?: { key, name }[] }`
+- **Item fields:** `key`, `title`, `status`, `sprint`, `projectKey`, `acceptanceCriteriaReadiness`, `missingInformation[]`, `hasActiveRun`, `activeRunId`, `activeRunStatus`, `externalUrl`
+
+## `GET /api/v1/stories/{key}`
+
+- **Response:** single `JiraStory`
+
+## `POST /api/v1/stories/{key}/test-design-runs`
+
+- **Body:** `{ actorId, createdBy }`
+- **Response:** `testDesignRunSchema` — opens existing run if one is active for the story
+
+## `GET /api/v1/test-design-runs/{id}`
+
+- **Response:** `testDesignRunSchema` with `status`, `nextActions[]`, `storyKey`, `storyTitle`, `planApproved`, `currentVersion`
+
+## `GET /api/v1/test-design-runs/{id}/requirement-analysis`
+
+- **Response:** analysis with `acceptanceCriteria[]`, `gaps[]`, `businessRules[]`, `readinessStatus`
+
+## `GET /api/v1/test-design-runs/{id}/test-design-plan`
+
+- **Response:** plan with `functionalAreas`, scenarios, `traceability[]`, `estimatedCaseCount`
+
+## `GET /api/v1/test-design-runs/{id}/review-data`
+
+- **Response:** `testCases[]`, `versions[]`, `reviewConversation[]`, `publicationResult`
+
+## Sprint 1 mutations (`POST`, body includes `actorId`)
+
+| Path | Purpose |
+|------|---------|
+| `/test-design-runs/{id}/analyze-requirements` | Run requirement analysis |
+| `/test-design-runs/{id}/prepare-test-design-plan` | Prepare test-design plan |
+| `/test-design-runs/{id}/approve-plan` | Approve plan |
+| `/test-design-runs/{id}/request-plan-revision` | `instruction`, optional `scope`, `focusArea` |
+| `/test-design-runs/{id}/generate-test-cases` | Generate cases from approved plan |
+| `/test-design-runs/{id}/request-test-case-revision` | Conversational case revision |
+| `/test-design-runs/{id}/approve` | Approve test design |
+| `/test-design-runs/{id}/publish` | Publish to Jira/TestRail |
+
+**Example `nextActions`:** `analyze_requirements`, `prepare_test_design_plan`, `request_analysis_revision`, `approve_plan`, `request_plan_changes`, `generate_test_cases`, `request_test_case_changes`, `approve_test_design`, `publish_test_cases`, `open_automation_backlog`
+
 ## `GET /api/v1/test-cases/automation-backlog`
 
 - **Shape:** `{ items: AutomationBacklogTestCase[], total? }` or top-level array

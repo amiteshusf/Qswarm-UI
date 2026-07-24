@@ -4,11 +4,13 @@ import { SidebarThemeMenu } from '@/components/layout/nav-extras'
 import { appName } from '@/lib/env'
 import { cn } from '@/lib/utils'
 import {
+  BookOpen,
   ClipboardCheck,
   GitBranch,
   LayoutDashboard,
   ListChecks,
   ListTree,
+  PenLine,
   ServerCog,
   Workflow,
 } from 'lucide-react'
@@ -33,11 +35,13 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
       {
-        to: '/automation-backlog',
-        label: 'Automation backlog',
-        icon: ListChecks,
+        to: '/story-intake',
+        label: 'Story Intake',
+        icon: BookOpen,
         emphasis: true,
       },
+      { to: '/test-design', label: 'Test Design', icon: PenLine },
+      { to: '/automation-backlog', label: 'Automation backlog', icon: ListChecks },
       { to: '/sessions', label: 'Automation runs', icon: Workflow },
       {
         to: '/sessions?status=awaiting_review',
@@ -73,6 +77,14 @@ function NavItemLink({ to, label, icon: Icon, end, emphasis, matchSearch }: NavI
     isActive =
       location.pathname === '/automation-backlog' ||
       location.pathname.startsWith('/automation-backlog/')
+  } else if (path === '/test-design') {
+    isActive =
+      location.pathname === '/test-design' ||
+      location.pathname.startsWith('/test-design/')
+  } else if (path === '/story-intake') {
+    isActive =
+      location.pathname === '/story-intake' ||
+      location.pathname.startsWith('/story-intake/')
   } else if (end) {
     isActive = location.pathname === path
   } else {

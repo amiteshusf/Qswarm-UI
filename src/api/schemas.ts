@@ -376,6 +376,7 @@ export const automationBacklogTestCaseSchema = z.object({
   sourceReference: z.string().optional(),
   storyKey: z.string().optional(),
   storyTitle: z.string().optional(),
+  testDesignRunId: z.string().optional(),
   automationStatus: automationBacklogStatusSchema,
   targetArea: z.string().optional(),
   repoConnectionId: z.string().optional(),
@@ -570,3 +571,225 @@ export type AutomationBacklogTestCase = z.infer<
   typeof automationBacklogTestCaseSchema
 >
 export type AutomationBacklogStatus = z.infer<typeof automationBacklogStatusSchema>
+
+// --- Sprint 1: Jira stories & test-design runs ---
+
+export const jiraStoryReadinessSchema = z.enum([
+  'ready',
+  'partial',
+  'missing',
+])
+
+export const jiraStorySchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  status: z.string(),
+  sprint: z.string().optional(),
+  projectKey: z.string(),
+  projectName: z.string().optional(),
+  acceptanceCriteriaReadiness: jiraStoryReadinessSchema.optional(),
+  missingInformation: z.array(z.string()).optional(),
+  hasActiveRun: z.boolean().optional(),
+  activeRunId: z.string().nullable().optional(),
+  activeRunStatus: z.string().optional(),
+  externalUrl: z.string().optional(),
+  priority: z.string().optional(),
+  assignee: z.string().optional(),
+  updatedAt: z.string().optional(),
+})
+
+export const jiraStoryListSchema = z.object({
+  items: z.array(jiraStorySchema),
+  total: z.coerce.number().optional(),
+  projects: z
+    .array(z.object({ key: z.string(), name: z.string() }))
+    .optional(),
+})
+
+const TEST_DESIGN_STATUS_VALUES = [
+  'draft',
+  'analyzing',
+  'analysis_ready',
+  'plan_preparing',
+  'plan_ready',
+  'plan_approved',
+  'generating',
+  'cases_ready',
+  'revising',
+  'approved',
+  'publishing',
+  'published',
+  'failed',
+] as const
+
+export const testDesignRunStatusSchema = z.enum(TEST_DESIGN_STATUS_VALUES)
+
+export const testDesignRunSchema = z.object({
+  id: z.string(),
+  storyKey: z.string(),
+  storyTitle: z.string(),
+  projectKey: z.string().optional(),
+  status: testDesignRunStatusSchema,
+  workflowStatus: z.string().optional(),
+  nextActions: z.array(z.string()).optional(),
+  currentVersion: z.coerce.number().optional(),
+  planApproved: z.boolean().optional(),
+  analysisReady: z.boolean().optional(),
+  casesGenerated: z.boolean().optional(),
+  approvedAt: z.string().optional(),
+  publishedAt: z.string().optional(),
+  externalUrl: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+export const requirementAnalysisSchema = z.object({
+  runId: z.string(),
+  storyKey: z.string(),
+  storyTitle: z.string(),
+  summary: z.string().optional(),
+  acceptanceCriteria: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        covered: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  businessRules: z.array(z.string()).optional(),
+  gaps: z
+    .array(
+      z.object({
+        id: z.string(),
+        description: z.string(),
+        severity: z.enum(['high', 'medium', 'low']).optional(),
+      }),
+    )
+    .optional(),
+  dependencies: z.array(z.string()).optional(),
+  assumptions: z.array(z.string()).optional(),
+  risks: z.array(z.string()).optional(),
+  proposedScope: z.string().optional(),
+  readinessStatus: z
+    .enum(['ready', 'needs_clarification', 'blocked'])
+    .optional(),
+  missingInformation: z.array(z.string()).optional(),
+})
+
+export const testDesignPlanSchema = z.object({
+  runId: z.string(),
+  version: z.coerce.number(),
+  versionId: z.string().optional(),
+  functionalAreas: z.array(z.string()).optional(),
+  positiveScenarios: z.array(z.string()).optional(),
+  negativeScenarios: z.array(z.string()).optional(),
+  boundaryCoverage: z.array(z.string()).optional(),
+  dataVariations: z.array(z.string()).optional(),
+  automationCandidates: z.array(z.string()).optional(),
+  exclusions: z.array(z.string()).optional(),
+  traceability: z
+    .array(
+      z.object({
+        acceptanceCriteriaId: z.string(),
+        coverage: z.string(),
+      }),
+    )
+    .optional(),
+  estimatedCaseCount: z.coerce.number().optional(),
+  summary: z.string().optional(),
+})
+
+export const testCaseDraftSchema = z.object({
+  id: z.string(),
+  draftId: z.string().optional(),
+  version: z.coerce.number().optional(),
+  title: z.string(),
+  objective: z.string().optional(),
+  preconditions: z.array(z.string()).optional(),
+  data: z.string().optional(),
+  steps: z.array(z.string()).optional(),
+  expectedResults: z.array(z.string()).optional(),
+  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+  type: z
+    .enum(['functional', 'negative', 'boundary', 'smoke', 'regression'])
+    .optional(),
+  automationCandidate: z.boolean().optional(),
+  linkedAcceptanceCriteria: z.array(z.string()).optional(),
+  changeType: z
+    .enum(['added', 'modified', 'removed', 'unchanged'])
+    .optional(),
+})
+
+export const testDesignVersionSchema = z.object({
+  version: z.coerce.number(),
+  versionId: z.string().optional(),
+  label: z.string().optional(),
+  createdAt: z.string(),
+  caseCount: z.coerce.number().optional(),
+  changeSummary: z.string().optional(),
+  addedCount: z.coerce.number().optional(),
+  modifiedCount: z.coerce.number().optional(),
+  removedCount: z.coerce.number().optional(),
+})
+
+export const testDesignPublicationItemSchema = z.object({
+  externalId: z.string().optional(),
+  externalUrl: z.string().optional(),
+  title: z.string(),
+  status: z.string(),
+  testCaseId: z.string().optional(),
+})
+
+export const testDesignPublicationResultSchema = z.object({
+  destination: z.string().optional(),
+  status: z.string(),
+  publishedCount: z.coerce.number().optional(),
+  failedCount: z.coerce.number().optional(),
+  readyForAutomationCount: z.coerce.number().optional(),
+  items: z.array(testDesignPublicationItemSchema).optional(),
+})
+
+export const testDesignReviewSummarySchema = z.object({
+  currentVersion: z.coerce.number().optional(),
+  currentVersionId: z.string().optional(),
+  totalCases: z.coerce.number().optional(),
+  automationCandidateCount: z.coerce.number().optional(),
+  gapsRemaining: z.coerce.number().optional(),
+  traceabilityCoverage: z.string().optional(),
+  reviewState: z.string().optional(),
+  workflowStatus: z.string().optional(),
+  nextActions: z.array(z.string()).optional(),
+})
+
+export const testDesignReviewDataSchema = z.object({
+  runId: z.string(),
+  reviewSummary: testDesignReviewSummarySchema,
+  testCases: z.array(testCaseDraftSchema).default([]),
+  versions: z.array(testDesignVersionSchema).default([]),
+  reviewConversation: z.array(reviewConversationMessageSchema).default([]),
+  publicationResult: testDesignPublicationResultSchema.nullable().optional(),
+})
+
+export const testDesignRevisionInputSchema = z
+  .object({
+    instruction: z.string().min(1),
+    scope: z.string().optional(),
+    focusArea: z.string().optional(),
+  })
+  .transform((v) => ({
+    instruction: v.instruction.trim(),
+    scope: v.scope?.trim() || undefined,
+    focusArea: v.focusArea?.trim() || undefined,
+  }))
+
+export type JiraStory = z.infer<typeof jiraStorySchema>
+export type TestDesignRun = z.infer<typeof testDesignRunSchema>
+export type RequirementAnalysis = z.infer<typeof requirementAnalysisSchema>
+export type TestDesignPlan = z.infer<typeof testDesignPlanSchema>
+export type TestCaseDraft = z.infer<typeof testCaseDraftSchema>
+export type TestDesignReviewData = z.infer<typeof testDesignReviewDataSchema>
+export type TestDesignRevisionInput = z.infer<
+  typeof testDesignRevisionInputSchema
+>
+export type TestDesignRunStatus = z.infer<typeof testDesignRunStatusSchema>

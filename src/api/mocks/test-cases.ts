@@ -9,6 +9,7 @@ export const mockAutomationBacklog: AutomationBacklogTestCase[] = [
     sourceReference: 'QA-1042',
     storyKey: 'PAY-88',
     storyTitle: 'Checkout partial refunds',
+    testDesignRunId: 'tdr_auth4',
     automationStatus: 'not_automated',
     targetArea: 'tests/e2e/checkout',
     objective:

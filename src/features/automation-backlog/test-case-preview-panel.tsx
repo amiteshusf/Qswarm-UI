@@ -1,6 +1,7 @@
 import type { AutomationBacklogTestCase } from '@/api/schemas'
 import { cn } from '@/lib/utils'
-import { BookOpen, GitBranch, Layers } from 'lucide-react'
+import { BookOpen, GitBranch, Layers, PenLine } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const statusLabels = {
   not_automated: 'Ready to automate',
@@ -60,7 +61,7 @@ export function TestCasePreviewPanel({ testCase, className }: Props) {
         </p>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetaTile
           icon={BookOpen}
           label="Story"
@@ -69,8 +70,8 @@ export function TestCasePreviewPanel({ testCase, className }: Props) {
         />
         <MetaTile
           icon={Layers}
-          label="Source"
-          value={testCase.sourceReference ?? testCase.caseId ?? '—'}
+          label="Published case"
+          value={testCase.caseId ?? testCase.sourceReference ?? '—'}
           detail={testCase.sourceSystem}
         />
         <MetaTile
@@ -78,6 +79,18 @@ export function TestCasePreviewPanel({ testCase, className }: Props) {
           label="Target area"
           value={testCase.targetArea ?? 'Not specified'}
         />
+        {testCase.testDesignRunId ? (
+          <Link
+            to={`/test-design/${testCase.testDesignRunId}`}
+            className="border-border/50 hover:border-swarm/40 rounded-lg border bg-surface px-3 py-2.5 transition-colors"
+          >
+            <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide">
+              <PenLine className="size-3" />
+              Sprint 1 run
+            </div>
+            <p className="text-swarm text-sm font-medium">View test design</p>
+          </Link>
+        ) : null}
       </div>
 
       {testCase.stepsPreview ? (

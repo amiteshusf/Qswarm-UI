@@ -10,6 +10,9 @@ import { RepoConnectionFormPage } from '@/features/repo-connections/repo-connect
 import { SessionDetailPage } from '@/features/sessions/session-detail-page'
 import { SessionsPage } from '@/features/sessions/sessions-page'
 import { SettingsPage } from '@/features/settings/settings-page'
+import { StoryIntakePage } from '@/features/story-intake/story-intake-page'
+import { TestDesignPage } from '@/features/test-design/test-design-page'
+import { TestDesignRunsPage } from '@/features/test-design/test-design-runs-page'
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +20,9 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'story-intake', element: <StoryIntakePage /> },
+      { path: 'test-design', element: <TestDesignRunsPage /> },
+      { path: 'test-design/:id', element: <TestDesignPage /> },
       { path: 'automation-backlog', element: <AutomationBacklogPage /> },
       { path: 'repo-connections', element: <RepoConnectionsPage /> },
       { path: 'repo-connections/new', element: <RepoConnectionFormPage /> },
