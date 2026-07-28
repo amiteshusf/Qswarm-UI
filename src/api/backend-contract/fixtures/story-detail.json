@@ -1,0 +1,17 @@
+{
+  "storyKey": "IIS-261",
+  "title": "Snowflake SaaS – integration/UAT",
+  "description": "Testing with app owner (Owner:\n+ Kimberley See) – Execute smoke testing and validate role visibility and access review readiness with Kimberley See.",
+  "status": "In Flight",
+  "sprint": null,
+  "projectKey": "IIS",
+  "assignee": "Mark Dawood",
+  "readiness": "partial",
+  "acceptanceCriteriaStatus": "partial",
+  "missingInformation": [
+    "Few explicit acceptance criteria were found"
+  ],
+  "hasActiveRun": false,
+  "activeRunId": null,
+  "jiraUrl": "https://usfoods.atlassian.net/browse/IIS-261"
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestDesignRun",
+  "type": "object",
+  "required": [
+    "id",
+    "storyKey",
+    "currentStage",
+    "nextActions"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "storyKey": {
+      "type": "string"
+    },
+    "workflowName": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "currentStep": {
+      "type": "string"
+    },
+    "currentStage": {
+      "type": "string"
+    },
+    "nextActions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blockedReason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "initiatedBy": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceStory": {
+      "type": "object"
+    },
+    "requirementAnalysis": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "testDesignPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "versions": {
+      "type": "array"
+    },
+    "reviewIssue": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "testCaseRecords": {
+      "type": "array"
+    },
+    "automationReadyTestCases": {
+      "type": "array"
+    },
+    "approvalId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "productWorkspace": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StoryListResponse",
+  "type": "object",
+  "required": [
+    "stories",
+    "total"
+  ],
+  "properties": {
+    "stories": {
+      "type": "array",
+      "items": {
+        "$ref": "story-detail.json"
+      }
+    },
+    "total": {
+      "type": "integer"
+    }
+  }
+}

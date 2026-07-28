@@ -1,0 +1,253 @@
+{
+  "version": "2026.07.28.1",
+  "fixtures": [
+    {
+      "operationId": "getDashboard",
+      "path": "/api/v1/dashboard",
+      "method": "GET",
+      "file": "fixtures/dashboard.json",
+      "variantTags": [
+        "setup",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getSettings",
+      "path": "/api/v1/settings",
+      "method": "GET",
+      "file": "fixtures/settings.json",
+      "variantTags": [
+        "setup",
+        "success"
+      ]
+    },
+    {
+      "operationId": "listStories",
+      "path": "/api/v1/stories",
+      "method": "GET",
+      "file": "fixtures/stories-list.json",
+      "variantTags": [
+        "sprint1",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getStory",
+      "path": "/api/v1/stories/{story_key}",
+      "method": "GET",
+      "file": "fixtures/story-detail.json",
+      "variantTags": [
+        "sprint1",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignReviewData",
+      "path": "/api/v1/test-design-runs/{run_id}/review-data",
+      "method": "GET",
+      "file": "fixtures/test-design-review-data-intake.json",
+      "variantTags": [
+        "sprint1",
+        "stage:intake_ready",
+        "success"
+      ]
+    },
+    {
+      "operationId": "listTestCases",
+      "path": "/api/v1/test-cases",
+      "method": "GET",
+      "file": "fixtures/test-case-list.json",
+      "variantTags": [
+        "sprint1",
+        "success",
+        "empty"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-intake-ready.json",
+      "variantTags": [
+        "sprint1",
+        "stage:intake_ready",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-analysis-ready.json",
+      "variantTags": [
+        "sprint1",
+        "stage:analysis_ready",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-awaiting-plan-approval.json",
+      "variantTags": [
+        "sprint1",
+        "stage:awaiting_plan_approval",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-plan-approved.json",
+      "variantTags": [
+        "sprint1",
+        "stage:plan_approved",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-awaiting-test-case-review.json",
+      "variantTags": [
+        "sprint1",
+        "stage:awaiting_test_case_review",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-approved.json",
+      "variantTags": [
+        "sprint1",
+        "stage:approved",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-automation-ready.json",
+      "variantTags": [
+        "sprint1",
+        "stage:automation_ready",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": "fixtures/test-design-run-legacy-awaiting-approval.json",
+      "variantTags": [
+        "sprint1",
+        "stage:legacy_awaiting_approval",
+        "success"
+      ]
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": null,
+      "variantTags": [
+        "sprint1",
+        "error:not_found"
+      ],
+      "status": "missing",
+      "note": "Use errors/not-found.json for 404 contract tests"
+    },
+    {
+      "operationId": "analyzeTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}/analyze",
+      "method": "POST",
+      "file": null,
+      "variantTags": [
+        "sprint1",
+        "mutation"
+      ],
+      "status": "missing",
+      "note": "Mutation response fixture deferred to backend follow-up"
+    },
+    {
+      "operationId": "publishTestDesign",
+      "path": "/api/v1/test-design-runs/{run_id}/publish",
+      "method": "POST",
+      "file": null,
+      "variantTags": [
+        "sprint1",
+        "mutation:publish"
+      ],
+      "status": "missing",
+      "note": "sprint1.publish.mutation — backend follow-up"
+    },
+    {
+      "operationId": "prepareSessionPlan",
+      "path": "/api/v1/sessions/{session_id}/prepare-plan",
+      "method": "POST",
+      "file": null,
+      "variantTags": [
+        "sprint2",
+        "mutation:prepare-plan"
+      ],
+      "status": "skipped",
+      "note": "sprint2.session.prepare-plan.mutation — skipped"
+    }
+  ],
+  "missing": [
+    {
+      "operationId": "getTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "method": "GET",
+      "file": null,
+      "variantTags": [
+        "sprint1",
+        "error:not_found"
+      ],
+      "status": "missing",
+      "note": "Use errors/not-found.json for 404 contract tests"
+    },
+    {
+      "operationId": "analyzeTestDesignRun",
+      "path": "/api/v1/test-design-runs/{run_id}/analyze",
+      "method": "POST",
+      "file": null,
+      "variantTags": [
+        "sprint1",
+        "mutation"
+      ],
+      "status": "missing",
+      "note": "Mutation response fixture deferred to backend follow-up"
+    },
+    {
+      "operationId": "publishTestDesign",
+      "path": "/api/v1/test-design-runs/{run_id}/publish",
+      "method": "POST",
+      "file": null,
+      "variantTags": [
+        "sprint1",
+        "mutation:publish"
+      ],
+      "status": "missing",
+      "note": "sprint1.publish.mutation — backend follow-up"
+    },
+    {
+      "operationId": "prepareSessionPlan",
+      "path": "/api/v1/sessions/{session_id}/prepare-plan",
+      "method": "POST",
+      "file": null,
+      "variantTags": [
+        "sprint2",
+        "mutation:prepare-plan"
+      ],
+      "status": "skipped",
+      "note": "sprint2.session.prepare-plan.mutation — skipped"
+    }
+  ]
+}

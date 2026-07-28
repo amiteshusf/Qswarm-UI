@@ -1,0 +1,58 @@
+{
+  "id": "c3d4e5f6-a7b8-4123-8def-123456789012",
+  "storyKey": "NSP-696",
+  "workflowName": "sprint1_qswarm_workspace",
+  "status": "active",
+  "currentStep": "plan_approved",
+  "currentStage": "plan_approved",
+  "nextActions": [
+    "generate_test_cases"
+  ],
+  "blockedReason": null,
+  "initiatedBy": "qswarm-web",
+  "createdAt": "2026-07-24T12:22:13.387184+00:00",
+  "updatedAt": "2026-07-24T12:22:13.387184+00:00",
+  "sourceStory": {
+    "storyKey": "NSP-696",
+    "intakeArtifactId": "7995e03e-0881-4027-9650-ddabe2540da0"
+  },
+  "requirementAnalysis": {
+    "version": 1,
+    "artifactId": "analysis-NSP-696",
+    "content": {
+      "storyKey": "NSP-696",
+      "summary": "Requirement analysis complete for NSP-696.",
+      "readinessStatus": "ready",
+      "acceptanceCriteriaCount": 3,
+      "gapsCount": 1,
+      "gaps": [
+        {
+          "id": "gap-1",
+          "description": "Missing edge-case AC",
+          "severity": "medium"
+        }
+      ]
+    }
+  },
+  "testDesignPlan": {
+    "version": 1,
+    "artifactId": "plan-NSP-696",
+    "content": {
+      "summary": "Approved plan for NSP-696.",
+      "estimatedCaseCount": 8,
+      "functionalAreas": [
+        "Banner visibility",
+        "Threshold rules"
+      ]
+    }
+  },
+  "reviewIssue": null,
+  "versions": [],
+  "testCaseRecords": [],
+  "automationReadyTestCases": [],
+  "approvalId": null,
+  "productWorkspace": {
+    "mode": "qswarm_first",
+    "stage": "plan_approved"
+  }
+}

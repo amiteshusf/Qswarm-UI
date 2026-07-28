@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArtifactVersionRef",
+  "type": "object",
+  "required": [
+    "version",
+    "artifactId",
+    "content"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "artifactId": {
+      "type": "string"
+    },
+    "content": {
+      "type": "object"
+    },
+    "createdAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

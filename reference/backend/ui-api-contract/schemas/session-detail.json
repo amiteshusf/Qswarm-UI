@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionDetail",
+  "type": "object",
+  "required": [
+    "id",
+    "status",
+    "engine",
+    "repoConnectionId",
+    "sourceRef"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "engine": {
+      "type": "string"
+    },
+    "repoConnectionId": {
+      "type": "string"
+    },
+    "sourceRef": {
+      "type": "string"
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rounds": {
+      "type": "array"
+    },
+    "patches": {
+      "type": "array"
+    },
+    "executions": {
+      "type": "array"
+    },
+    "reviews": {
+      "type": "array"
+    }
+  }
+}

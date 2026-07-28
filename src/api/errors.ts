@@ -136,19 +136,89 @@ export class SchemaResponseError extends Error {
   }
 }
 
+export type NormalizedApiError = {
+  status: number
+  code?: string
+  message: string
+  action?: string
+  currentStage?: string
+  allowedActions?: string[]
+  retryable?: boolean
+  context?: Record<string, unknown>
+  requestId?: string
+  operationId?: string
+}
+
+/** Normalize canonical backend error bodies into a stable frontend shape. */
+export function normalizeApiError(
+  status: number,
+  body: unknown,
+  meta?: { requestId?: string; operationId?: string },
+): NormalizedApiError {
+  const message =
+    extractBackendMessage(body) ?? `Request failed with status ${status}`
+  const code = extractBackendErrorCode(body)
+  const detail =
+    body && typeof body === 'object' && 'detail' in body
+      ? (body as { detail: unknown }).detail
+      : undefined
+  const detailObj =
+    detail && typeof detail === 'object' && !Array.isArray(detail)
+      ? (detail as Record<string, unknown>)
+      : undefined
+  const errObj =
+    body && typeof body === 'object' && 'error' in body
+      ? (body as { error: unknown }).error
+      : undefined
+  const errorRecord =
+    errObj && typeof errObj === 'object'
+      ? (errObj as Record<string, unknown>)
+      : undefined
+
+  return {
+    status,
+    code: code ?? (typeof errorRecord?.code === 'string' ? errorRecord.code : undefined),
+    message,
+    action:
+      typeof detailObj?.action === 'string' ? detailObj.action : undefined,
+    currentStage:
+      typeof detailObj?.currentStage === 'string'
+        ? detailObj.currentStage
+        : undefined,
+    allowedActions: Array.isArray(detailObj?.allowedActions)
+      ? detailObj.allowedActions.map(String)
+      : undefined,
+    retryable:
+      typeof detailObj?.retryable === 'boolean' ? detailObj.retryable : undefined,
+    context:
+      detailObj?.context && typeof detailObj.context === 'object'
+        ? (detailObj.context as Record<string, unknown>)
+        : undefined,
+    requestId: meta?.requestId,
+    operationId: meta?.operationId,
+  }
+}
+
 export class ApiError extends Error {
   readonly kind = 'http' as const
   readonly status: number
   readonly body?: unknown
   /** Short summary suitable for toasts and alert titles. */
   readonly summary: string
+  readonly normalized: NormalizedApiError
 
-  constructor(summary: string, status: number, body?: unknown) {
+  constructor(
+    summary: string,
+    status: number,
+    body?: unknown,
+    meta?: { requestId?: string; operationId?: string },
+  ) {
     super(summary)
     this.name = 'ApiError'
     this.summary = summary
     this.status = status
     this.body = body
+    this.normalized = normalizeApiError(status, body, meta)
   }
 }
 

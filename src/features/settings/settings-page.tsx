@@ -1,5 +1,6 @@
 import { CheckCircle2, Circle, ServerCog } from 'lucide-react'
 
+import { ContractDiagnosticsPanel } from '@/features/platform/contract-diagnostics-panel'
 import { useSettings } from '@/api/hooks'
 import { PageHeader } from '@/components/patterns/page-header'
 import { QueryErrorAlert } from '@/components/patterns/query-error'
@@ -122,6 +123,10 @@ export function SettingsPage() {
               </CardContent>
             </Card>
           ) : null}
+
+          <SectionBlock title="Advanced">
+            <ContractDiagnosticsPanel />
+          </SectionBlock>
         </>
       ) : null}
 

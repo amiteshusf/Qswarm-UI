@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MetaContractResponse",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "backendGitCommit": {
+      "type": "string"
+    },
+    "routeCount": {
+      "type": "integer"
+    },
+    "operationCount": {
+      "type": "integer"
+    }
+  }
+}

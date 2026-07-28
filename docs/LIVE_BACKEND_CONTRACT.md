@@ -1,4 +1,8 @@
-# Live backend contract (inspected)
+# Live backend contract (deprecated)
+
+**Use `docs/API_CONTRACT_INTEGRATION.md` and the synced bundle in `src/api/backend-contract/` instead.**
+
+This file is retained only for historical context. Authoritative routes, fixtures, and checksums now come from the versioned backend contract bundle (`2026.07.28.1`). (inspected)
 
 Captured from **`https://qswarm.onrender.com`** with path prefix **`/api/v1`**.  
 **Authoritative OpenAPI:** `reference/backend/docs/openapi-ui-v1.json` (synced 2026-07-24).  

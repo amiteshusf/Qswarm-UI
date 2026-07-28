@@ -1,0 +1,67 @@
+{
+  "id": "a7b8c9d0-e1f2-4123-8f01-567890123456",
+  "storyKey": "NSP-696",
+  "workflowName": "sprint1_qswarm_workspace",
+  "status": "active",
+  "currentStep": "legacy_awaiting_approval",
+  "currentStage": "legacy_awaiting_approval",
+  "nextActions": [
+    "approve_test_design"
+  ],
+  "blockedReason": null,
+  "initiatedBy": "qswarm-web",
+  "createdAt": "2026-07-24T12:22:13.387184+00:00",
+  "updatedAt": "2026-07-24T12:22:13.387184+00:00",
+  "sourceStory": {
+    "storyKey": "NSP-696",
+    "intakeArtifactId": "7995e03e-0881-4027-9650-ddabe2540da0"
+  },
+  "requirementAnalysis": {
+    "version": 1,
+    "artifactId": "analysis-LEG-1",
+    "content": {
+      "storyKey": "LEG-1",
+      "summary": "Legacy analysis",
+      "readinessStatus": "needs_clarification",
+      "acceptanceCriteriaCount": 3,
+      "gapsCount": 1,
+      "gaps": [
+        {
+          "id": "gap-1",
+          "description": "Missing edge-case AC",
+          "severity": "medium"
+        }
+      ]
+    }
+  },
+  "testDesignPlan": {
+    "version": 1,
+    "artifactId": "plan-LEG-1",
+    "content": {
+      "summary": "Legacy plan",
+      "estimatedCaseCount": 8,
+      "functionalAreas": [
+        "Banner visibility",
+        "Threshold rules"
+      ]
+    }
+  },
+  "reviewIssue": null,
+  "versions": [],
+  "testCaseRecords": [
+    {
+      "id": "legacy-1",
+      "registryKey": "LEG-TC-1",
+      "workflowRunId": "a7b8c9d0-e1f2-4123-8f01-567890123456",
+      "sourceStoryKey": "LEG-1",
+      "title": "Legacy test case",
+      "automationStatus": "draft"
+    }
+  ],
+  "automationReadyTestCases": [],
+  "approvalId": null,
+  "productWorkspace": {
+    "mode": "qswarm_first",
+    "stage": "legacy_awaiting_approval"
+  }
+}

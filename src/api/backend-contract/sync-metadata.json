@@ -1,0 +1,10 @@
+{
+  "contractVersion": "2026.07.28.1",
+  "backendGitCommit": "interim-from-openapi",
+  "openapiSha256": "8474f2228691f1a0e1b07b815ce839343e7750e7c2bb09e653e78b42384abfbc",
+  "fixtureBundleSha256": "dd1d6b03c7eb589aca3f3f42d18174c505d7f3005dc79dff44cafc385e15f51d",
+  "syncedAt": "2026-07-28T14:22:09.139Z",
+  "sourcePath": "/Users/amitesh/Desktop/qswarm-web/reference/backend/ui-api-contract",
+  "operationCount": 48,
+  "routeCount": 43
+}

@@ -1,0 +1,9 @@
+{
+  "version": "2026.07.28.1",
+  "algorithm": "sha256",
+  "files": {
+    "openapi-ui-v1.json": "8474f2228691f1a0e1b07b815ce839343e7750e7c2bb09e653e78b42384abfbc",
+    "contract-manifest.json": "6d43f16e47d9b213d6fe31516e60c7fd54d98e3308b200617e94cb2090f0af2a",
+    "fixture-bundle": "dd1d6b03c7eb589aca3f3f42d18174c505d7f3005dc79dff44cafc385e15f51d"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionCreate",
+  "type": "object",
+  "required": [
+    "repositoryConnectionId",
+    "engine",
+    "sourceRef",
+    "createdBy"
+  ],
+  "properties": {
+    "repositoryConnectionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "engine": {
+      "type": "string"
+    },
+    "sourceRef": {
+      "type": "string"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "branchPolicyId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "approvedCaseId": {
+      "type": "string"
+    }
+  }
+}

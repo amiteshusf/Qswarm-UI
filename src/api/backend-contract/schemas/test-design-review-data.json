@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestDesignReviewData",
+  "type": "object",
+  "required": [
+    "workflowRunId",
+    "reviewSummary"
+  ],
+  "properties": {
+    "workflowRunId": {
+      "type": "string"
+    },
+    "reviewSummary": {
+      "type": "object"
+    },
+    "testCases": {
+      "type": "array"
+    },
+    "conversation": {
+      "type": "array"
+    },
+    "versions": {
+      "type": "array"
+    },
+    "publication": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  }
+}

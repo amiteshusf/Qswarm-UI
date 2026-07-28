@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SettingsResponse",
+  "type": "object",
+  "required": [
+    "applicationName",
+    "environment"
+  ],
+  "properties": {
+    "applicationName": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "debug": {
+      "type": "boolean"
+    },
+    "jira": {
+      "type": "object"
+    },
+    "codingProvider": {
+      "type": "string"
+    },
+    "workspaceRoot": {
+      "type": "string"
+    },
+    "claudeCodeEnabled": {
+      "type": "boolean"
+    },
+    "copilotAgentEnabled": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

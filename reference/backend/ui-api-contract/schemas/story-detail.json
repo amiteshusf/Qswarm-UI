@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StoryDetail",
+  "type": "object",
+  "required": [
+    "storyKey",
+    "title"
+  ],
+  "properties": {
+    "storyKey": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "projectKey": {
+      "type": "string"
+    },
+    "assignee": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "readiness": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "partial",
+        "missing_ac"
+      ]
+    },
+    "acceptanceCriteriaStatus": {
+      "type": "string"
+    },
+    "missingInformation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "hasActiveRun": {
+      "type": "boolean"
+    },
+    "activeRunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "jiraUrl": {
+      "type": "string",
+      "format": "uri"
+    }
+  }
+}

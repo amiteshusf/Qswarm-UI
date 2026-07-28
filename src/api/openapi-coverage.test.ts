@@ -5,15 +5,13 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import {
-  API_V1_PREFIX,
-  listFrontendRouteSpecs,
-  normalizeOpenApiPath,
-  normalizeRoutePath,
-} from '@/api/backend-route-manifest'
+  backendOperations,
+  listOperationIds,
+} from '@/api/generated/backend-routes'
 
-const openapiPath = join(
+const contractDir = join(
   dirname(fileURLToPath(import.meta.url)),
-  '../../reference/backend/docs/openapi-ui-v1.json',
+  'backend-contract',
 )
 
 type OpenApiDoc = {
@@ -21,37 +19,37 @@ type OpenApiDoc = {
 }
 
 function loadOpenApi(): OpenApiDoc {
-  return JSON.parse(readFileSync(openapiPath, 'utf8')) as OpenApiDoc
+  return JSON.parse(
+    readFileSync(join(contractDir, 'openapi-ui-v1.json'), 'utf8'),
+  ) as OpenApiDoc
 }
 
-function openApiRouteSet(doc: OpenApiDoc): Set<string> {
-  const routes = new Set<string>()
-  for (const [path, methods] of Object.entries(doc.paths)) {
-    if (!path.startsWith(API_V1_PREFIX)) continue
-    for (const method of Object.keys(methods)) {
-      routes.add(`${method.toUpperCase()} ${normalizeOpenApiPath(path)}`)
-    }
-  }
-  return routes
+function normalizePath(path: string): string {
+  return path.replace(/\{([^}]+)\}/g, '{$1}')
 }
 
-describe('OpenAPI route coverage', () => {
-  it('maps every frontend route to a documented OpenAPI operation', () => {
+describe('backend contract route coverage', () => {
+  it('maps every generated OpenAPI operation to a documented path', () => {
     const doc = loadOpenApi()
-    const openApi = openApiRouteSet(doc)
-    const missing: string[] = []
+    const openApi = new Set<string>()
+    for (const [path, methods] of Object.entries(doc.paths)) {
+      for (const method of Object.keys(methods)) {
+        openApi.add(`${method.toUpperCase()} ${normalizePath(path)}`)
+      }
+    }
 
-    for (const route of listFrontendRouteSpecs()) {
-      const normalized = `${route.method} ${normalizeOpenApiPath(
-        normalizeRoutePath(route.path),
-      )}`
-      if (!openApi.has(normalized)) missing.push(normalized)
+    const missing: string[] = []
+    for (const id of listOperationIds()) {
+      const op = backendOperations[id]
+      if (op.source !== 'openapi-ui-v1') continue
+      const key = `${op.method} ${normalizePath(op.pathTemplate)}`
+      if (!openApi.has(key)) missing.push(key)
     }
 
     expect(missing, `Missing in OpenAPI: ${missing.join(', ')}`).toEqual([])
   })
 
-  it('rejects stale alias paths such as analyze-requirements', () => {
+  it('rejects stale alias paths in bundled OpenAPI', () => {
     const doc = loadOpenApi()
     const paths = Object.keys(doc.paths)
     expect(paths.some((p) => p.includes('analyze-requirements'))).toBe(false)

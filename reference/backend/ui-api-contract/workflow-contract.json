@@ -1,0 +1,132 @@
+{
+  "version": "2026.07.28.1",
+  "sprint1": {
+    "workflowName": "sprint1_qswarm_workspace",
+    "stages": [
+      "intake_ready",
+      "analyzing_requirements",
+      "analysis_ready",
+      "preparing_test_design_plan",
+      "awaiting_plan_approval",
+      "plan_revision_requested",
+      "plan_approved",
+      "generating_test_cases",
+      "awaiting_test_case_review",
+      "revising_test_cases",
+      "approved",
+      "publishing",
+      "automation_ready",
+      "completed",
+      "legacy_awaiting_approval"
+    ],
+    "actions": [
+      "analyze_requirements",
+      "request_analysis_revision",
+      "prepare_plan",
+      "approve_plan",
+      "request_plan_changes",
+      "generate_test_cases",
+      "request_test_case_changes",
+      "approve_test_design",
+      "publish_test_cases",
+      "open_automation_backlog"
+    ],
+    "stageActionMap": {
+      "intake_ready": [
+        "analyze_requirements"
+      ],
+      "analysis_ready": [
+        "prepare_plan"
+      ],
+      "awaiting_plan_approval": [
+        "request_plan_changes",
+        "approve_plan"
+      ],
+      "plan_approved": [
+        "generate_test_cases"
+      ],
+      "awaiting_test_case_review": [
+        "request_test_case_changes",
+        "approve_test_design"
+      ],
+      "approved": [
+        "publish_test_cases"
+      ],
+      "automation_ready": [
+        "open_automation_backlog"
+      ],
+      "legacy_awaiting_approval": [
+        "approve_test_design"
+      ]
+    }
+  },
+  "sprint2": {
+    "workflowName": "sprint2_automation_session",
+    "sessionStatuses": [
+      "draft",
+      "plan_ready",
+      "queued",
+      "running",
+      "awaiting_review",
+      "revising",
+      "succeeded",
+      "failed",
+      "cancelled"
+    ],
+    "sessionStages": [
+      "draft",
+      "queued",
+      "plan_review",
+      "plan_approved",
+      "running",
+      "revising",
+      "ready_for_review",
+      "ready_to_publish",
+      "published",
+      "failed",
+      "cancelled"
+    ],
+    "nextActions": [
+      "prepare_plan",
+      "start_automation",
+      "approve_plan",
+      "request_plan_revision",
+      "request_changes",
+      "approve",
+      "create_pr",
+      "view_summary"
+    ],
+    "statusActionMap": {
+      "draft": [
+        "prepare_plan",
+        "start_automation"
+      ],
+      "plan_ready": [
+        "approve_plan",
+        "request_plan_revision"
+      ],
+      "awaiting_review": [
+        "request_changes",
+        "approve"
+      ],
+      "succeeded": [
+        "view_summary"
+      ],
+      "failed": [
+        "view_summary"
+      ],
+      "cancelled": [
+        "view_summary"
+      ]
+    },
+    "mutationActions": [
+      "prepare_plan",
+      "approve_plan",
+      "request_plan_revision",
+      "start",
+      "revise",
+      "approve",
+      "create_pr"
+    ]
+  }
+}

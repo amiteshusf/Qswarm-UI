@@ -1,0 +1,53 @@
+{
+  "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "storyKey": "NSP-696",
+  "workflowName": "sprint1_qswarm_workspace",
+  "status": "active",
+  "currentStep": "awaiting_plan_approval",
+  "currentStage": "awaiting_plan_approval",
+  "nextActions": [
+    "request_plan_changes",
+    "approve_plan"
+  ],
+  "blockedReason": null,
+  "initiatedBy": "qswarm-web",
+  "createdAt": "2026-07-24T12:22:13.387184+00:00",
+  "updatedAt": "2026-07-24T12:22:13.387184+00:00",
+  "sourceStory": {
+    "storyKey": "NSP-696",
+    "intakeArtifactId": "7995e03e-0881-4027-9650-ddabe2540da0"
+  },
+  "requirementAnalysis": {
+    "version": 1,
+    "artifactId": "analysis-NSP-696",
+    "content": {
+      "storyKey": "NSP-696",
+      "summary": "Requirement analysis complete for NSP-696.",
+      "readinessStatus": "ready",
+      "acceptanceCriteriaCount": 3,
+      "gapsCount": 0,
+      "gaps": []
+    }
+  },
+  "testDesignPlan": {
+    "version": 1,
+    "artifactId": "plan-NSP-696",
+    "content": {
+      "summary": "Prepared test-design plan.",
+      "estimatedCaseCount": 8,
+      "functionalAreas": [
+        "Banner visibility",
+        "Threshold rules"
+      ]
+    }
+  },
+  "reviewIssue": null,
+  "versions": [],
+  "testCaseRecords": [],
+  "automationReadyTestCases": [],
+  "approvalId": null,
+  "productWorkspace": {
+    "mode": "qswarm_first",
+    "stage": "awaiting_plan_approval"
+  }
+}

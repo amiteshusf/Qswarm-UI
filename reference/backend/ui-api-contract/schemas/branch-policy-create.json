@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BranchPolicyCreate",
+  "type": "object",
+  "required": [
+    "name",
+    "repositoryConnectionId",
+    "baseBranch",
+    "branchPattern"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "repositoryConnectionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "baseBranch": {
+      "type": "string"
+    },
+    "branchPattern": {
+      "type": "string"
+    },
+    "prTitleTemplate": {
+      "type": "string"
+    },
+    "prBodyTemplate": {
+      "type": "string"
+    }
+  }
+}

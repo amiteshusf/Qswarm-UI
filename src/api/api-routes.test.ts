@@ -1,5 +1,7 @@
-import { adaptJiraStoryDetail } from '@/api/adapters/stories'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { operationHref } from '@/api/contract-http'
+import { testDesignRunIntakeReadyFixture } from '@/api/mocks/fixtures/test-design-runs'
 
 async function loadApiClient() {
   vi.stubEnv('VITE_USE_MOCK_DATA', 'false')
@@ -9,11 +11,12 @@ async function loadApiClient() {
   const mod = await import('@/api/client')
   return mod.api
 }
-import { backendRoutes } from '@/api/backend-route-manifest'
-import { testDesignRunIntakeReadyFixture } from '@/api/mocks/fixtures/test-design-runs'
 
 describe('API client routes', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_USE_MOCK_DATA', 'false')
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
+    vi.stubEnv('VITE_ALLOW_SAME_ORIGIN_API', 'false')
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -31,7 +34,11 @@ describe('API client routes', () => {
     const [href, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit]
     expect(init.method).toBe('POST')
     expect(href).toBe(
-      `https://api.example.com${backendRoutes.testDesignRuns.analyze(testDesignRunIntakeReadyFixture.id).path}?actor_id=qswarm-web`,
+      operationHref(
+        'analyzeTestDesignRun',
+        { run_id: testDesignRunIntakeReadyFixture.id },
+        { actor_id: 'qswarm-web' },
+      ),
     )
     expect(href).not.toContain('analyze-requirements')
     expect(init.body).toBeUndefined()
@@ -57,12 +64,15 @@ describe('API client routes', () => {
 
   it('lists backlog via GET /test-cases', async () => {
     const api = await loadApiClient()
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ items: [] }), { status: 200 }),
     )
     await api.listAutomationBacklog({ status: 'not_automated' })
     const [href] = vi.mocked(fetch).mock.calls[0] as [string]
-    expect(href).toContain(backendRoutes.testCases.list().path)
+    expect(href).toContain(
+      operationHref('listTestCases').replace('https://api.example.com', ''),
+    )
     expect(href).not.toContain('automation-backlog')
     expect(href).toContain('status=automation_ready')
   })

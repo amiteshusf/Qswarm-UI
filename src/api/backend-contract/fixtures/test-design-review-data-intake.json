@@ -1,0 +1,21 @@
+{
+  "workflowRunId": "38d476a7-8294-4acd-909b-36de472f18d0",
+  "reviewSummary": {
+    "status": "intake_ready",
+    "currentVersion": 0,
+    "testCaseCount": 0,
+    "gapsCount": 0,
+    "automationCandidateCount": 0,
+    "nextActions": [
+      "analyze_requirements"
+    ],
+    "workflowStatus": "pending"
+  },
+  "testCases": [],
+  "conversation": [],
+  "versions": [],
+  "publication": {
+    "publishedCount": 0,
+    "records": []
+  }
+}

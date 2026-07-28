@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestCaseRecord",
+  "type": "object",
+  "required": [
+    "id",
+    "registryKey",
+    "workflowRunId",
+    "sourceStoryKey"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "registryKey": {
+      "type": "string"
+    },
+    "workflowRunId": {
+      "type": "string"
+    },
+    "sourceStoryKey": {
+      "type": "string"
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "automationStatus": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "detail": [
+    {
+      "type": "value_error",
+      "loc": [
+        "body",
+        "instruction"
+      ],
+      "msg": "Field required",
+      "input": null
+    }
+  ]
+}

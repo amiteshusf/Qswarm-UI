@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SessionBrief",
+  "type": "object",
+  "required": [
+    "sessionId",
+    "sessionState",
+    "sourceSummary",
+    "setup"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string"
+    },
+    "sessionState": {
+      "type": "object"
+    },
+    "sourceSummary": {
+      "type": "object"
+    },
+    "setup": {
+      "type": "object"
+    },
+    "automationBrief": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,1283 @@
+{
+  "version": "2026.07.28.1",
+  "generatedAt": "2026-07-28T14:20:34.289Z",
+  "operationCount": 48,
+  "routeCount": 43,
+  "openapiRouteCount": 37,
+  "frontendMetaRouteCount": 6,
+  "note": "43 unique route paths (37 from openapi-ui-v1.json + 6 frontend-consumed setup/meta paths). operationCount includes multiple HTTP methods on shared paths.",
+  "operations": [
+    {
+      "operationId": "listBranchPolicies",
+      "method": "GET",
+      "path": "/api/v1/branch-policies",
+      "parameters": [],
+      "responseSchema": "schemas/branch-policy-list.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_list_branch_policies_api_v1_branch_policies_get"
+    },
+    {
+      "operationId": "createBranchPolicy",
+      "method": "POST",
+      "path": "/api/v1/branch-policies",
+      "parameters": [],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 201,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_create_branch_policy_api_v1_branch_policies_post",
+      "requestBodySchema": "schemas/branch-policy-create.json"
+    },
+    {
+      "operationId": "getBranchPolicy",
+      "method": "GET",
+      "path": "/api/v1/branch-policies/{policy_id}",
+      "parameters": [
+        {
+          "name": "policy_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Policy Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/branch-policy.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_branch_policy_api_v1_branch_policies__policy_id__get"
+    },
+    {
+      "operationId": "updateBranchPolicy",
+      "method": "PATCH",
+      "path": "/api/v1/branch-policies/{policy_id}",
+      "parameters": [
+        {
+          "name": "policy_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Policy Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_patch_branch_policy_api_v1_branch_policies__policy_id__patch",
+      "requestBodySchema": "schemas/branch-policy-update.json"
+    },
+    {
+      "operationId": "getDashboard",
+      "method": "GET",
+      "path": "/api/v1/dashboard",
+      "parameters": [],
+      "responseSchema": "schemas/dashboard.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_dashboard_api_v1_dashboard_get"
+    },
+    {
+      "operationId": "listEngines",
+      "method": "GET",
+      "path": "/api/v1/engines",
+      "parameters": [],
+      "responseSchema": "schemas/engine-list.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "frontend-consumed"
+      ],
+      "featureArea": "setup",
+      "source": "frontend-consumed",
+      "note": "Documented setup/meta route consumed by QSwarm Web; not yet in openapi-ui-v1.json"
+    },
+    {
+      "operationId": "getHealth",
+      "method": "GET",
+      "path": "/api/v1/health",
+      "parameters": [],
+      "responseSchema": "schemas/health.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "frontend-consumed"
+      ],
+      "featureArea": "meta",
+      "source": "frontend-consumed",
+      "note": "Documented setup/meta route consumed by QSwarm Web; not yet in openapi-ui-v1.json"
+    },
+    {
+      "operationId": "getIntegrationStatus",
+      "method": "GET",
+      "path": "/api/v1/integration-status",
+      "parameters": [],
+      "responseSchema": "schemas/integration-status.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "frontend-consumed"
+      ],
+      "featureArea": "setup",
+      "source": "frontend-consumed",
+      "note": "Documented setup/meta route consumed by QSwarm Web; not yet in openapi-ui-v1.json"
+    },
+    {
+      "operationId": "getMetaContract",
+      "method": "GET",
+      "path": "/api/v1/meta/contract",
+      "parameters": [],
+      "responseSchema": "schemas/meta-contract.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "frontend-consumed"
+      ],
+      "featureArea": "meta",
+      "source": "frontend-consumed",
+      "note": "Documented setup/meta route consumed by QSwarm Web; not yet in openapi-ui-v1.json"
+    },
+    {
+      "operationId": "getMetaHealth",
+      "method": "GET",
+      "path": "/api/v1/meta/health",
+      "parameters": [],
+      "responseSchema": "schemas/health.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "frontend-consumed"
+      ],
+      "featureArea": "meta",
+      "source": "frontend-consumed",
+      "note": "Documented setup/meta route consumed by QSwarm Web; not yet in openapi-ui-v1.json"
+    },
+    {
+      "operationId": "listRepoConnections",
+      "method": "GET",
+      "path": "/api/v1/repo-connections",
+      "parameters": [],
+      "responseSchema": "schemas/repo-connection-list.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_list_repo_connections_api_v1_repo_connections_get"
+    },
+    {
+      "operationId": "createRepoConnection",
+      "method": "POST",
+      "path": "/api/v1/repo-connections",
+      "parameters": [],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 201,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_create_repo_connection_api_v1_repo_connections_post",
+      "requestBodySchema": "schemas/repo-connection-create.json"
+    },
+    {
+      "operationId": "getRepoConnection",
+      "method": "GET",
+      "path": "/api/v1/repo-connections/{connection_id}",
+      "parameters": [
+        {
+          "name": "connection_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Connection Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/repo-connection.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_repo_connection_api_v1_repo_connections__connection_id__get"
+    },
+    {
+      "operationId": "updateRepoConnection",
+      "method": "PATCH",
+      "path": "/api/v1/repo-connections/{connection_id}",
+      "parameters": [
+        {
+          "name": "connection_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Connection Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_patch_repo_connection_api_v1_repo_connections__connection_id__patch",
+      "requestBodySchema": "schemas/repo-connection-update.json"
+    },
+    {
+      "operationId": "getReviewQueue",
+      "method": "GET",
+      "path": "/api/v1/review-queue",
+      "parameters": [],
+      "responseSchema": "schemas/review-queue.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "frontend-consumed"
+      ],
+      "featureArea": "meta",
+      "source": "frontend-consumed",
+      "note": "Documented setup/meta route consumed by QSwarm Web; not yet in openapi-ui-v1.json"
+    },
+    {
+      "operationId": "listSessions",
+      "method": "GET",
+      "path": "/api/v1/sessions",
+      "parameters": [
+        {
+          "name": "status",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filter by UI session status (Zod enum)",
+            "title": "Status"
+          },
+          "description": "Filter by UI session status (Zod enum)"
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 200,
+            "minimum": 1,
+            "default": 50,
+            "title": "Limit"
+          }
+        }
+      ],
+      "responseSchema": "schemas/session-list.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_list_sessions_api_v1_sessions_get"
+    },
+    {
+      "operationId": "createSession",
+      "method": "POST",
+      "path": "/api/v1/sessions",
+      "parameters": [],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 201,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_create_session_api_v1_sessions_post",
+      "requestBodySchema": "schemas/session-create.json"
+    },
+    {
+      "operationId": "getSessionDetail",
+      "method": "GET",
+      "path": "/api/v1/sessions/{session_id}",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/session-detail.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_session_detail_api_v1_sessions__session_id__get"
+    },
+    {
+      "operationId": "approveSession",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/approve",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_approve_session_api_v1_sessions__session_id__approve_post",
+      "requestBodySchema": "schemas/session-approve.json"
+    },
+    {
+      "operationId": "approveSessionPlan",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/approve-plan",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_approve_session_plan_api_v1_sessions__session_id__approve_plan_post",
+      "requestBodySchema": "schemas/session-approve-plan.json"
+    },
+    {
+      "operationId": "getSessionBrief",
+      "method": "GET",
+      "path": "/api/v1/sessions/{session_id}/brief",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/session-brief.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_session_brief_api_v1_sessions__session_id__brief_get"
+    },
+    {
+      "operationId": "createSessionPr",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/create-pr",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_create_pr_api_v1_sessions__session_id__create_pr_post",
+      "requestBodySchema": "schemas/session-create-pr.json"
+    },
+    {
+      "operationId": "prepareSessionPlan",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/prepare-plan",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_prepare_session_plan_api_v1_sessions__session_id__prepare_plan_post",
+      "requestBodySchema": "schemas/session-prepare-plan.json"
+    },
+    {
+      "operationId": "requestSessionPlanRevision",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/request-plan-revision",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_request_session_plan_revision_api_v1_sessions__session_id__request_plan_revision_post",
+      "requestBodySchema": "schemas/session-revision-request.json"
+    },
+    {
+      "operationId": "requestSessionRevision",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/request-revision",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_request_revision_api_v1_sessions__session_id__request_revision_post",
+      "requestBodySchema": "schemas/session-revision-request.json"
+    },
+    {
+      "operationId": "getSessionReviewData",
+      "method": "GET",
+      "path": "/api/v1/sessions/{session_id}/review-data",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/session-review-data.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_session_review_data_api_v1_sessions__session_id__review_data_get"
+    },
+    {
+      "operationId": "startSession",
+      "method": "POST",
+      "path": "/api/v1/sessions/{session_id}/start",
+      "parameters": [
+        {
+          "name": "session_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "sprint2",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_start_session_api_v1_sessions__session_id__start_post",
+      "requestBodySchema": "schemas/session-start.json"
+    },
+    {
+      "operationId": "getSettings",
+      "method": "GET",
+      "path": "/api/v1/settings",
+      "parameters": [],
+      "responseSchema": "schemas/settings.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1"
+      ],
+      "featureArea": "setup",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_settings_api_v1_settings_get"
+    },
+    {
+      "operationId": "listStories",
+      "method": "GET",
+      "path": "/api/v1/stories",
+      "parameters": [
+        {
+          "name": "projectKey",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectkey"
+          }
+        },
+        {
+          "name": "status",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        {
+          "name": "q",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Q"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 100,
+            "minimum": 1,
+            "default": 50,
+            "title": "Limit"
+          }
+        }
+      ],
+      "responseSchema": "schemas/story-list.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-stories"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_list_stories_api_v1_stories_get"
+    },
+    {
+      "operationId": "getStory",
+      "method": "GET",
+      "path": "/api/v1/stories/{story_key}",
+      "parameters": [
+        {
+          "name": "story_key",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "title": "Story Key"
+          }
+        }
+      ],
+      "responseSchema": "schemas/story-detail.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-stories"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_story_api_v1_stories__story_key__get"
+    },
+    {
+      "operationId": "createTestDesignRun",
+      "method": "POST",
+      "path": "/api/v1/stories/{story_key}/test-design-runs",
+      "parameters": [
+        {
+          "name": "story_key",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "title": "Story Key"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-stories"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_create_test_design_run_api_v1_stories__story_key__test_design_runs_post",
+      "requestBodySchema": "schemas/test-design-run-create.json"
+    },
+    {
+      "operationId": "listTestCases",
+      "method": "GET",
+      "path": "/api/v1/test-cases",
+      "parameters": [
+        {
+          "name": "status",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filter e.g. automation_ready",
+            "title": "Status"
+          },
+          "description": "Filter e.g. automation_ready"
+        },
+        {
+          "name": "workflowRunId",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflowrunid"
+          }
+        },
+        {
+          "name": "sourceStoryKey",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcestorykey"
+          }
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "integer",
+            "maximum": 500,
+            "minimum": 1,
+            "default": 100,
+            "title": "Limit"
+          }
+        }
+      ],
+      "responseSchema": "schemas/test-case-list.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-cases"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_list_test_cases_api_v1_test_cases_get"
+    },
+    {
+      "operationId": "getTestCase",
+      "method": "GET",
+      "path": "/api/v1/test-cases/{record_id}",
+      "parameters": [
+        {
+          "name": "record_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/test-case-record.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-cases"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_test_case_api_v1_test_cases__record_id__get"
+    },
+    {
+      "operationId": "automateTestCase",
+      "method": "POST",
+      "path": "/api/v1/test-cases/{record_id}/automate",
+      "parameters": [
+        {
+          "name": "record_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-cases"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_automate_test_case_api_v1_test_cases__record_id__automate_post",
+      "requestBodySchema": "schemas/test-case-automate.json"
+    },
+    {
+      "operationId": "publishTestCase",
+      "method": "POST",
+      "path": "/api/v1/test-cases/{record_id}/publish",
+      "parameters": [
+        {
+          "name": "record_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Record Id"
+          }
+        },
+        {
+          "name": "actor_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "qswarm-web",
+            "title": "Actor Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-cases"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_publish_test_case_api_v1_test_cases__record_id__publish_post",
+      "requestBodySchema": "schemas/test-case-publish.json"
+    },
+    {
+      "operationId": "getTestDesignRun",
+      "method": "GET",
+      "path": "/api/v1/test-design-runs/{run_id}",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/test-design-run.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_test_design_run_api_v1_test_design_runs__run_id__get"
+    },
+    {
+      "operationId": "getTestDesignRunAnalysis",
+      "method": "GET",
+      "path": "/api/v1/test-design-runs/{run_id}/analysis",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/artifact-ref.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_analysis_api_v1_test_design_runs__run_id__analysis_get"
+    },
+    {
+      "operationId": "analyzeTestDesignRun",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/analyze",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        },
+        {
+          "name": "actor_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "qswarm-web",
+            "title": "Actor Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_analyze_requirements_api_v1_test_design_runs__run_id__analyze_post"
+    },
+    {
+      "operationId": "approveTestDesign",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/approve",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_approve_test_design_api_v1_test_design_runs__run_id__approve_post",
+      "requestBodySchema": "schemas/test-design-approve.json"
+    },
+    {
+      "operationId": "approveTestDesignPlan",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/approve-plan",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        },
+        {
+          "name": "actor_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "qswarm-web",
+            "title": "Actor Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_approve_plan_api_v1_test_design_runs__run_id__approve_plan_post"
+    },
+    {
+      "operationId": "generateTestDesignTestCases",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/generate-test-cases",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        },
+        {
+          "name": "actor_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "qswarm-web",
+            "title": "Actor Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_generate_test_cases_api_v1_test_design_runs__run_id__generate_test_cases_post"
+    },
+    {
+      "operationId": "getTestDesignPlan",
+      "method": "GET",
+      "path": "/api/v1/test-design-runs/{run_id}/plan",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/artifact-ref.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_plan_api_v1_test_design_runs__run_id__plan_get"
+    },
+    {
+      "operationId": "prepareTestDesignPlan",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/prepare-plan",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        },
+        {
+          "name": "actor_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "qswarm-web",
+            "title": "Actor Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_prepare_plan_api_v1_test_design_runs__run_id__prepare_plan_post"
+    },
+    {
+      "operationId": "publishTestDesign",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/publish",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        },
+        {
+          "name": "actor_id",
+          "in": "query",
+          "required": false,
+          "schema": {
+            "type": "string",
+            "default": "qswarm-web",
+            "title": "Actor Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_publish_test_design_api_v1_test_design_runs__run_id__publish_post"
+    },
+    {
+      "operationId": "requestTestDesignPlanRevision",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/request-plan-revision",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_request_plan_revision_api_v1_test_design_runs__run_id__request_plan_revision_post",
+      "requestBodySchema": "schemas/test-design-revision-request.json"
+    },
+    {
+      "operationId": "requestTestDesignRevision",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/{run_id}/request-revision",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_request_revision_api_v1_test_design_runs__run_id__request_revision_post",
+      "requestBodySchema": "schemas/test-design-revision-request.json"
+    },
+    {
+      "operationId": "getTestDesignReviewData",
+      "method": "GET",
+      "path": "/api/v1/test-design-runs/{run_id}/review-data",
+      "parameters": [
+        {
+          "name": "run_id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          }
+        }
+      ],
+      "responseSchema": "schemas/test-design-review-data.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-test-design-runs"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_get_review_data_api_v1_test_design_runs__run_id__review_data_get"
+    },
+    {
+      "operationId": "bulkCreateTestDesignRuns",
+      "method": "POST",
+      "path": "/api/v1/test-design-runs/bulk",
+      "parameters": [],
+      "responseSchema": "schemas/unknown.json",
+      "successStatus": 200,
+      "tags": [
+        "ui-v1",
+        "ui-v1-stories"
+      ],
+      "featureArea": "sprint1",
+      "source": "openapi-ui-v1",
+      "openapiOperationId": "ui_bulk_create_test_design_runs_api_v1_test_design_runs_bulk_post",
+      "requestBodySchema": "schemas/test-design-run-bulk-create.json"
+    }
+  ]
+}

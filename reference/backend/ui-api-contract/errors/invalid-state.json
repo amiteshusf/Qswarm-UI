@@ -1,0 +1,7 @@
+{
+  "detail": {
+    "code": "invalid_state",
+    "message": "Action not allowed in current state",
+    "field": null
+  }
+}

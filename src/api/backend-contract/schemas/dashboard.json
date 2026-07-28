@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DashboardResponse",
+  "type": "object",
+  "required": [
+    "sessionCounts",
+    "recentSessions"
+  ],
+  "properties": {
+    "sessionCounts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer"
+      }
+    },
+    "recentSessions": {
+      "type": "array",
+      "items": {
+        "$ref": "session-summary.json"
+      }
+    },
+    "repositoryConnectionCount": {
+      "type": "integer"
+    },
+    "branchPolicyCount": {
+      "type": "integer"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "applicationName": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "storyKey": "NSP-696",
+  "workflowName": "sprint1_qswarm_workspace",
+  "status": "active",
+  "currentStep": "analysis_ready",
+  "currentStage": "analysis_ready",
+  "nextActions": [
+    "prepare_plan"
+  ],
+  "blockedReason": null,
+  "initiatedBy": "qswarm-web",
+  "createdAt": "2026-07-24T12:22:13.387184+00:00",
+  "updatedAt": "2026-07-24T12:22:13.387184+00:00",
+  "sourceStory": {
+    "storyKey": "NSP-696",
+    "intakeArtifactId": "7995e03e-0881-4027-9650-ddabe2540da0"
+  },
+  "requirementAnalysis": {
+    "version": 1,
+    "artifactId": "analysis-NSP-696",
+    "content": {
+      "storyKey": "NSP-696",
+      "summary": "Requirement analysis complete for NSP-696.",
+      "readinessStatus": "needs_clarification",
+      "acceptanceCriteriaCount": 3,
+      "gapsCount": 1,
+      "gaps": [
+        {
+          "id": "gap-1",
+          "description": "Missing edge-case AC",
+          "severity": "medium"
+        }
+      ]
+    }
+  },
+  "testDesignPlan": null,
+  "reviewIssue": null,
+  "versions": [],
+  "testCaseRecords": [],
+  "automationReadyTestCases": [],
+  "approvalId": null,
+  "productWorkspace": {
+    "mode": "qswarm_first",
+    "stage": "analysis_ready"
+  }
+}
